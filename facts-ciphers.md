@@ -1,6 +1,6 @@
 # Facts — ciphers
 
-Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and seven external
+Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and eight external
 review passes. No forced chain/stage structure — see [logical-chain.md](logical-chain.md) for that
 layer, which chains get reconstructed from these afterward once enough facts exist and repetition
 across them becomes visible (that's the compression step we agreed on).
@@ -52,11 +52,14 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   over an insecure channel without helping an eavesdropper decrypt — though this benefit assumes the
   public key is authentically bound to its owner (F13); an unauthenticated public key can simply be
   substituted by an active adversary.
-- **F9** (core) — Public-key encryption is commonly built from a **Trapdoor one-way function** (or a
-  comparable trapdoor-like hardness assumption) — not the only conceivable foundation, but the
-  standard one for the constructions covered here. Not every trapdoor one-way function automatically
-  yields a secure encryption scheme; it typically must also be randomized/structured to resist more
-  than just one-wayness.
+- **F9** (core) — Public-key encryption rests on some asymmetric hardness structure — a capability the
+  key-pair owner has that a public-only observer lacks — but that structure takes more than one shape.
+  RSA fits the classic mold: a **Trapdoor one-way function**, easy to invert only with the trapdoor.
+  ElGamal (F59) does not: discrete-log-style inversion is hard for *everyone*, with no trapdoor at
+  all — confidentiality instead comes from the receiver alone being able to compute the shared value
+  from their private exponent (the Diffie-Hellman construction). Not every public-key encryption
+  scheme is a trapdoor one-way function in disguise; trapdoor functions are the standard foundation
+  for RSA-style schemes specifically, not for public-key encryption in general.
 - **F10** (recommended) — Symmetric encryption needs no trapdoor/algebraic structure — a sufficiently
   unpredictable **Keystream** generator or **Block cipher** can form its core — which is why symmetric
   primitives can be built from simpler, faster operations than public-key primitives. A bare block
@@ -135,8 +138,8 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   revealing a non-trivial relation between the two plaintexts (their XOR), independent of whether any
   further recovery attempt succeeds.
 - **F27** (recommended) — The XOR-of-plaintexts from F26 can further allow an attacker to fully
-  recover both plaintexts via **Crib-dragging** or **Frequency analysis**, given enough structure in the
-  underlying data — full recovery isn't guaranteed, though F26 alone already broke confidentiality
+  recover both plaintexts via **Crib-dragging** or **Frequency analysis**, given enough structure in
+  the underlying data — full recovery isn't guaranteed, though F26 alone already broke confidentiality
   regardless of whether it succeeds.
 
 ## F. One-time pad — the ideal/limiting case
@@ -150,7 +153,7 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   length; the ciphertext is the same length as the plaintext, so OTP (and stream ciphers generally)
   does not hide message length unless a separate mechanism (e.g. padding to a fixed length) is added.
 - **F31** (recommended) — OTP and unauthenticated stream ciphers generally provide confidentiality
-  only. They inherit the same **Malleability** as other unauthenticated XOR-based constructions (F41):
+  only. They inherit the same **Malleability** as other unauthenticated XOR-based constructions (F42):
   flipping a ciphertext bit flips the corresponding plaintext bit predictably, with no built-in
   integrity check.
 - **F32** (core) — One-time pad's perfect secrecy relies on F24's requirement in its strictest form:
@@ -163,7 +166,7 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   expanded from a short key via a **PRNG**/**CSPRNG**, trading perfect/information-theoretic secrecy
   for computational security in exchange for practical key distribution — the expanded keystream must
   still satisfy F25's pseudorandomness requirement; a PRNG/CSPRNG is exactly what's meant to provide
-  that, and RC4 (F59) is the case where the generator falls short of it.
+  that, and RC4 (F62) is the case where the generator falls short of it.
 
 ## G. Modes of operation and ECB
 
@@ -177,53 +180,75 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   stream-cipher keystream reuse: reusing a CTR nonce reproduces the same keystream, collapsing exactly
   to the F26/F27 attack; using a predictable IV in CBC can let an adversary distinguish encryptions of
   chosen plaintexts — a break of the mode, not of the underlying block cipher itself.
-- **F38** (core) — Electronic Codebook (ECB) applies a block cipher independently to each block with
+- **F38** (recommended) — Even with perfectly managed nonces/IVs, encrypting enough data under one key
+  risks a birthday-bound collision among a block cipher's own output blocks (chaining values in CBC,
+  keystream blocks in CTR): after roughly `2^(n/2)` blocks for an n-bit block size, a collision becomes
+  likely by chance, and it leaks a relation between the two colliding plaintext blocks — mechanically
+  similar to F26's keystream-reuse attack, but caused by exhausting the block space itself rather than
+  by nonce mismanagement. This is a real practical concern for small block sizes (DES's 64-bit blocks,
+  F61, give a birthday bound around `2^32` blocks) and essentially irrelevant for AES's 128-bit blocks
+  (`2^64`, far outside practical reach) — the mechanism behind the real-world Sweet32 attack.
+- **F39** (core) — Electronic Codebook (ECB) applies a block cipher independently to each block with
   no chaining, randomization, or counter — it is itself a (degenerate) mode of operation, not the
   absence of one — so identical plaintext blocks always produce identical ciphertext blocks under a
   fixed key.
-- **F39** (recommended) — Repeated ciphertext blocks under ECB reveal that the corresponding plaintext
+- **F40** (recommended) — Repeated ciphertext blocks under ECB reveal that the corresponding plaintext
   blocks are identical — leaking structure without recovering the key or the plaintext content itself.
 
 ## H. Confidentiality vs. integrity vs. replay
 
-- **F40** (core) — **Confidentiality** and **Integrity** are independent security goals; achieving one
+- **F41** (core) — **Confidentiality** and **Integrity** are independent security goals; achieving one
   does not imply the other.
-- **F41** (core) — Some constructions are prone to **Malleability**: flipping a ciphertext bit (e.g.
+- **F42** (core) — Some constructions are prone to **Malleability**: flipping a ciphertext bit (e.g.
   under CTR mode / stream ciphers) flips the corresponding plaintext bit predictably, with no built-in
   error signal.
-- **F42** (core) — Confidentiality-only encryption needs an additional authentication mechanism to
+- **F43** (core) — Confidentiality-only encryption needs an additional authentication mechanism to
   detect tampering — a **Message authentication code (MAC)** (symmetric) or a **Digital signature**
   (asymmetric). This in turn requires the MAC key or signing private key itself be authentic and kept
   secret — the same requirement as F5/F13, applied to a different primitive. (Integrated constructions
-  like **AEAD**, F43, provide this within a single primitive rather than as a literally separate
+  like **AEAD**, F44, provide this within a single primitive rather than as a literally separate
   add-on.)
-- **F43** (core) — **Authenticated encryption with associated data (AEAD)** packages confidentiality
+- **F44** (core) — **Authenticated encryption with associated data (AEAD)** packages confidentiality
   and integrity into a single, integrated construction (e.g. GCM) rather than requiring a
   hand-assembled combination of separate encryption and MAC algorithms — the standard modern default
   for symmetric authenticated encryption. Part of what an AEAD construction must define is failure
   behavior: on verification failure it must output a rejection symbol (⊥) with no partial plaintext or
-  diagnostic detail, precisely to avoid the oracle problem in F46.
-- **F44** (recommended) — When a dedicated AEAD construction (F43) isn't used, encryption and a MAC
+  diagnostic detail, precisely to avoid the oracle problem in F48.
+- **F45** (recommended) — When a dedicated AEAD construction (F44) isn't used, encryption and a MAC
   can instead be combined by hand (**Generic composition**) — **Encrypt-then-MAC**,
   **MAC-then-encrypt**, or **Encrypt-and-MAC** — but the three orderings are not equally safe.
-- **F45** (core) — Generic composition (F44) requires the encryption key and the MAC key be
+- **F46** (core) — **Encrypt-and-MAC** computes the tag directly over the *plaintext*, sent alongside
+  the ciphertext. A MAC is designed only for unforgeability, not confidentiality, so it may leak
+  information about the plaintext through the tag itself — e.g. a deterministic MAC produces the same
+  tag for the same plaintext, letting an adversary test for repeated messages via the tag even when
+  the encryption half is independently randomized. This is a distinct failure from MAC-then-encrypt's
+  (F48), not a variant of it.
+- **F47** (core) — Generic composition (F45) requires the encryption key and the MAC key be
   independently derived or otherwise separated; reusing one key for both primitives can create
   cross-primitive attacks even when each primitive is secure in isolation.
-- **F46** (core) — A verifier must check authentication before releasing or acting on the plaintext —
-  not necessarily before decrypting internally (some compositions, e.g. **MAC-then-encrypt**, must
-  decrypt before the MAC can even be checked). What matters is that unverified plaintext is never
-  exposed or acted upon; skipping or delaying that check externally can open **Padding oracle
-  attack**-style vulnerabilities regardless of composition ordering (F44).
-- **F47** (core) — Given independently-keyed schemes (F45), verification-before-release (F46), an
+- **F48** (core) — A verifier must not let any observable behavior — an error message, timing,
+  connection reset, or anything else external — depend on an internal parsing/validation step (such
+  as padding-validity) before authentication succeeds. This is a stronger requirement than "don't
+  release the plaintext": for constructions where decryption includes a padding check (e.g. CBC),
+  **MAC-then-encrypt** must decrypt — and therefore validate padding — before the MAC can even be
+  checked, so padding-validity itself becomes an observable oracle (a **Padding oracle attack**) even
+  if the plaintext is never explicitly exposed. **Encrypt-then-MAC** avoids this structurally: a
+  failed MAC check can reject before decryption, and any padding validation inside it, ever runs.
+- **F49** (recommended) — A **Padding oracle attack** exploits exactly the mechanism F48 describes:
+  because **Padding** (F16) makes a decrypted block's validity checkable (well-formed padding or not),
+  an attacker who can distinguish "valid padding" from "invalid padding" after decryption — via a
+  different error, timing, or connection behavior — can use many such oracle queries, without knowing
+  the key, to recover a CBC-mode plaintext one byte at a time, by manipulating bytes of the preceding
+  ciphertext block and observing which manipulated values yield valid padding.
+- **F50** (core) — Given independently-keyed schemes (F47), verification-before-release (F48), an
   unforgeable MAC, an encryption scheme that actually achieves its intended confidentiality
   **Security goal** (a stronger bar than F2's bare infeasible-recovery floor alone),
   IV/nonce/associated-data covered by the MAC computation, and no exploitable implementation side
-  channels, **Encrypt-then-MAC** is the generically robust ordering among the three in F44: computing
-  the MAC over the ciphertext lets
-  integrity be checked without decrypting or trusting the encryption scheme's own robustness — a
-  guarantee that depends on all of these stated assumptions, not one holding unconditionally
-  regardless of the specific schemes combined.
-- **F48** (recommended) — Encryption (with or without a MAC) does not by itself prevent an adversary
+  channels, **Encrypt-then-MAC** is the generically robust ordering among the three in F45: computing
+  the MAC over the ciphertext lets integrity be checked without decrypting or trusting the encryption
+  scheme's own robustness — a guarantee that depends on all of these stated assumptions, not one
+  holding unconditionally regardless of the specific schemes combined.
+- **F51** (recommended) — Encryption (with or without a MAC) does not by itself prevent an adversary
   from replaying, deleting, or reordering previously valid ciphertexts. Preventing this requires an
   explicit **Freshness** or sequence value that is itself covered by the authentication mechanism —
   not merely encrypted — and checked by the verifier; a MAC over content alone doesn't protect the
@@ -237,26 +262,28 @@ different." (MAC-vs-signature and keyed-hash-vs-MAC comparisons were removed fro
 Flags: they don't state a limitation of *encryption*, which is this file's actual boundary for
 touching MAC/signature material at all, so they're scope creep here rather than genuinely missing.)
 
-- **F49** (core) — **Encoding**, Caesar, and encryption: Caesar has a key (unlike encoding), but its
+- **F52** (core) — **Encoding**, Caesar, and encryption: Caesar has a key (unlike encoding), but its
   keyspace (~25 non-identity shifts) is far too small to satisfy F5's unpredictability/infeasibility
   requirement — so Caesar is structurally encryption-shaped (has the F1 mechanics) but functionally
   encoding-grade (fails F2). The dimension that actually separates all three isn't "has a key or not"
   but keyspace size / infeasibility of exhaustive search. (Caesar named only as an illustrative
   example, same treatment as other named constructions below — not a `precise-definitions.md` entry.)
-- **F50** (core) — **Block cipher** vs. **Stream cipher**: a block cipher operates on fixed-size
+- **F53** (core) — **Block cipher** vs. **Stream cipher**: a block cipher operates on fixed-size
   blocks and needs a **Mode of operation** for anything longer (F15); a stream cipher operates on data
   of any length directly via a **Keystream** (F23), with no block-size constraint. Neither subsumes
-  the other — block ciphers give stronger structural analysis tools (F17–F22), stream ciphers avoid
-  the padding problem (F16) entirely.
-- **F51** (core) — **Nonce** vs. **Initialization vector (IV)**: a nonce's requirement is normally
+  the other — block ciphers give stronger structural analysis tools (F17–F22), and while a block
+  cipher *can* avoid padding overhead via F16's ciphertext-stealing alternative, it still has to
+  explicitly choose and implement that mechanism; a stream cipher never faces the padding problem to
+  begin with.
+- **F54** (core) — **Nonce** vs. **Initialization vector (IV)**: a nonce's requirement is normally
   just uniqueness under a given key; an IV's requirement is mode-dependent — sometimes uniqueness
   suffices (CTR), sometimes unpredictability is required (CBC) (F36).
-- **F52** (core) — **Generic composition** vs. **Hybrid encryption**: both are "combine two
+- **F55** (core) — **Generic composition** vs. **Hybrid encryption**: both are "combine two
   independently-designed primitives" patterns, easily conflated, but fixed and different: generic
-  composition specifically combines encryption + MAC into authenticated encryption (F44); hybrid
+  composition specifically combines encryption + MAC into authenticated encryption (F45); hybrid
   encryption specifically combines public-key + symmetric encryption to solve the bootstrap problem
   (F12). Same surface shape, different problem solved.
-- **F53** (recommended) — **Parallelization** vs. **Error propagation**: both are properties of a
+- **F56** (recommended) — **Parallelization** vs. **Error propagation**: both are properties of a
   **Mode of operation**, easily conflated as "how robust/fast is this mode," but distinct dimensions.
   CTR is parallelizable in both directions with no error propagation beyond the corrupted bit itself;
   CBC decryption is parallelizable *and* has 2-block error propagation per corrupted ciphertext block
@@ -269,79 +296,81 @@ deliberately fact-subjects only, not `precise-definitions.md` entries — the ge
 cipher, stream cipher, public-key encryption) is what's defined; the named construction is just an
 example of it.
 
-- **F54** (core) — **AES** (Advanced Encryption Standard) is a concrete instance of a **Block cipher**
+- **F57** (core) — **AES** (Advanced Encryption Standard) is a concrete instance of a **Block cipher**
   (F14): a **Substitution-permutation network (SPN)** with 128-bit blocks and 128/192/256-bit keys,
   10/12/14 rounds depending on key size — the standard modern illustration of F17–F22's
   iterated-construction reasoning.
-- **F55** (core) — **RSA** is a concrete instance of **Public-key encryption** (F8): its hardness
+- **F58** (core) — **RSA** is a concrete instance of **Public-key encryption** (F8, F9): its hardness
   rests on the *RSA problem* (computing `e`-th roots modulo a composite `n`) — related to, but not
   proven equivalent to, the **Integer factorization problem** (factoring `n` breaks RSA; no proof
-  shows breaking RSA requires factoring). Textbook (unpadded) RSA is deterministic: encrypting the
-  same plaintext twice always yields the same ciphertext, letting an adversary test plaintext equality
-  or exploit RSA's multiplicative structure — a gap F2's bare infeasible-recovery requirement doesn't
-  rule out. Practical RSA encryption requires randomized padding (e.g. RSA-OAEP) to close it and
-  provide real confidentiality guarantees beyond F2's minimum.
-- **F56** (core) — **ElGamal** is a second, independent concrete instance of **Public-key encryption**
-  (F8): its confidentiality rests on the **Decisional Diffie-Hellman problem (DDH)** in a **Group** —
-  a stronger assumption than the **Computational Diffie-Hellman problem (CDH)** alone, which only
-  guarantees that computing the shared value is hard, not that ciphertexts built from it are
-  indistinguishable. Encryption is inherently randomized (a fresh per-message ephemeral value), so it
-  doesn't share RSA's (F55) textbook-determinism pitfall by default.
-- **F57** (core) — **ChaCha20** is a concrete instance of a **Synchronous stream cipher** (F23): it
+  shows breaking RSA requires factoring). Textbook (unpadded) RSA has two distinct weaknesses beyond
+  F2's bare infeasible-recovery floor: it's deterministic (encrypting the same plaintext twice yields
+  the same ciphertext, enabling equality tests — an IND-CPA-style failure), and separately it's
+  multiplicatively homomorphic (`Enc(m₁)·Enc(m₂) ≡ Enc(m₁·m₂) mod n`, enabling ciphertext malleability
+  and chosen-ciphertext attacks — an IND-CCA-style failure, not a consequence of the determinism issue).
+  Practical RSA encryption requires randomized padding (e.g. RSA-OAEP) to close both gaps.
+- **F59** (core) — **ElGamal** is a second, independent concrete instance of **Public-key encryption**
+  (F8, F9): its confidentiality rests on the **Decisional Diffie-Hellman problem (DDH)** in a
+  **Group** — a stronger assumption than the **Computational Diffie-Hellman problem (CDH)** alone,
+  which only guarantees that computing the shared value is hard, not that ciphertexts built from it
+  are indistinguishable. Encryption is inherently randomized (a fresh per-message ephemeral value), so
+  it doesn't share RSA's (F58) textbook-determinism pitfall by default.
+- **F60** (core) — **ChaCha20** is a concrete instance of a **Synchronous stream cipher** (F23): it
   generates its keystream from a key, nonce, and counter using only add-rotate-XOR operations, no
   S-boxes or lookup tables — fast in pure software without dedicated hardware support, unlike AES
-  (F54), which benefits substantially from dedicated instructions (AES-NI) where available.
-- **F58** (recommended) — **DES** (Data Encryption Standard) is a historical concrete instance of a
+  (F57), which benefits substantially from dedicated instructions (AES-NI) where available.
+- **F61** (recommended) — **DES** (Data Encryption Standard) is a historical concrete instance of a
   **Block cipher** (F14) with a 56-bit key. The problem isn't that a DES key can be predictable — it
   can be perfectly uniformly random — it's that the total keyspace (`2^56` possibilities) is small
   enough for exhaustive search at modern computing power, violating F5's "sufficiently large keyspace"
-  clause specifically, not its unpredictability clause. This is why DES is no longer considered secure
-  and AES (F54) replaced it.
-- **F59** (recommended) — **RC4** is a historical concrete instance of a **Synchronous stream cipher**
+  clause specifically, not its unpredictability clause. (DES's 64-bit block size is also small enough
+  to be a birthday-bound concern in its own right, F38.) This is why DES is no longer considered
+  secure and AES (F57) replaced it.
+- **F62** (recommended) — **RC4** is a historical concrete instance of a **Synchronous stream cipher**
   (F23) whose keystream has statistically detectable biases in its early output bytes, violating F25's
   pseudorandomness requirement. This holds independent of nonce/key reuse — RC4 remains insecure even
   under perfect nonce/key hygiene, which is what makes it a violation of F25 specifically, not of F24.
 
 ## K. Implementation
 
-`F24`, `F36`, `F45`, and `F46` each touch implementation already, but none of them is *about*
+`F24`, `F36`, `F47`, and `F48` each touch implementation already, but none of them is *about*
 implementation as its own concern — they state a requirement and stop short of how it's actually met
 in running code. This section closes that gap.
 
-- **F60** (core) — Satisfying F24's uniqueness requirement in practice needs an explicit
+- **F63** (core) — Satisfying F24's uniqueness requirement in practice needs an explicit
   nonce-generation strategy: a monotonic counter (unique for as long as its state persists, doesn't
-  wrap around — F61 — and stays unique across every instance sharing the key — F63) or a value
+  wrap around — F64 — and stays unique across every instance sharing the key — F66) or a value
   independently and uniformly sampled at random from a sufficiently large space (unique with high
-  probability, bounded by the **Birthday paradox**, F66) — which in turn depends on a real
+  probability, bounded by the **Birthday paradox**, F69) — which in turn depends on a real
   **CSPRNG** being available and correctly seeded, not just "call a random function." "Just don't
   reuse it" is a requirement, not an implementable instruction on its own.
-- **F61** (core) — A counter-based nonce must never be allowed to wrap around and repeat a
+- **F64** (core) — A counter-based nonce must never be allowed to wrap around and repeat a
   previously-used value within the lifetime of a key. A counter's finite bit-width imposes a hard,
   computable limit on how many messages can be safely encrypted under one key — a real operational
   limit, not just a theoretical one.
-- **F62** (core) — A counter-based nonce that resets to zero on process restart, without persisting its
+- **F65** (core) — A counter-based nonce that resets to zero on process restart, without persisting its
   last value across restarts, silently reuses nonces that were already used before the crash/restart —
   a common real-world instance of violating F24, not a hypothetical edge case.
-- **F63** (core) — F62's restart problem generalizes spatially, not just temporally: when multiple
+- **F66** (core) — F65's restart problem generalizes spatially, not just temporally: when multiple
   instances sharing the same key run concurrently — replicas behind a load balancer, forked processes,
   or a cloned/restored VM or container snapshot — each independently maintaining a counter from the
   same starting state reproduces the exact same nonce sequence across instances, violating F24 just as
   surely as a single restarted process does. Coordinating nonce uniqueness across instances (e.g.
   partitioning the counter space, or folding a per-instance identifier into the nonce) is a distinct
   operational requirement from persisting state across one instance's own restarts.
-- **F64** (core) — F45's independent-key requirement is typically achieved in practice via a **Key
+- **F67** (core) — F47's independent-key requirement is typically achieved in practice via a **Key
   derivation function (KDF)**: deriving separate encryption and MAC keys from one shared secret using
   different context/info strings, rather than generating and distributing two unrelated keys.
-- **F65** (core) — Verifying a MAC/tag (F46) must use a constant-time comparison; an early-exit
+- **F68** (core) — Verifying a MAC/tag (F48) must use a constant-time comparison; an early-exit
   byte-by-byte comparison can leak how many leading bytes matched via timing, which — given an
   actually exposed, measurable timing channel and enough attack attempts — can be exploited to forge a
   tag byte-by-byte. This is a real, demonstrated attack class, though it requires a genuine observable
   timing oracle and favorable conditions to exploit in practice, not just non-constant-time code in
-  the abstract; F47's "no exploitable side channels" qualifier is not automatically satisfied just
+  the abstract; F50's "no exploitable side channels" qualifier is not automatically satisfied just
   because the comparison logic is functionally correct.
-- **F66** (recommended) — A random nonce, independently and uniformly sampled and long enough to make
+- **F69** (recommended) — A random nonce, independently and uniformly sampled and long enough to make
   collisions negligible under the **Birthday paradox**, removes the need for persistent counter state
-  across restarts (F62) or across instances (F63), at the cost of a longer nonce than a counter would
+  across restarts (F65) or across instances (F66), at the cost of a longer nonce than a counter would
   need for the same collision risk — a concrete state-vs-nonce-length tradeoff implementers actually
   choose between.
 
@@ -353,36 +382,35 @@ ones, qualitatively — this section makes that, and the rest of the vision doc'
 dimension, into facts with an actual measurable dimension attached, matching `activity-model.md`'s
 `measure` activity.
 
-- **F67** (core) — Symmetric encryption/decryption throughput is typically orders of magnitude higher
+- **F70** (core) — Symmetric encryption/decryption throughput is typically orders of magnitude higher
   than public-key operations at a comparable security level — directly measurable (time N operations,
   compare) — though the exact ratio varies substantially by construction, implementation, and
   hardware, and by which operation is measured (e.g. RSA encryption/verification is much faster than
   RSA decryption/signing, because of how the public and private exponents are typically chosen).
-- **F68** (core) — Ciphertext size scales differently by construction: symmetric ciphertext is roughly
+- **F71** (core) — Ciphertext size scales differently by construction: symmetric ciphertext is roughly
   plaintext length plus a small fixed overhead (IV/nonce, and a tag if authenticated); RSA ciphertext
   is always exactly the modulus size regardless of (small) plaintext length, so encrypting a short
   message directly under RSA produces disproportionate ciphertext expansion.
-- **F69** (recommended) — At the commonly-cited ~128-bit security level (a representative point, not a
+- **F72** (recommended) — At the commonly-cited ~128-bit security level (a representative point, not a
   universal law — exact figures shift as hardness estimates are revised), symmetric keys need about
   128 bits, RSA moduli need about 3072 bits (roughly 24× larger), and ECC keys need about 256 bits
   (roughly 2× larger than the symmetric key, but over an order of magnitude smaller than the matching
   RSA modulus) — the concrete, measurable reason ECC-based constructions scale better than RSA as
   security requirements increase, beyond F11's qualitative ECC note.
-- **F70** (recommended) — Whichever construction is used (stream cipher or a block-cipher mode like
-  CTR), it's specifically choosing F60's *counter-based* nonce-generation strategy — not the
+- **F73** (recommended) — Whichever construction is used (stream cipher or a block-cipher mode like
+  CTR), it's specifically choosing F63's *counter-based* nonce-generation strategy — not the
   construction itself — that requires persistent state (the current counter value) across the
   lifetime of a key. The asymmetry matters: the sender/nonce-allocator side always needs this
   persistence, to know the next unused value; the receiver only needs it too if the nonce is implicit
   (derived from its own synchronized counter rather than read off each message) — if the nonce is
   transmitted alongside the ciphertext, the receiver just reads it per message and carries no
-  generating state of its own. This asymmetric persistence is exactly what F62's and F63's failure
-  modes attack. Choosing F60's *random* nonce-generation strategy instead needs no persistent counter
-  state on either side between messages — only
-  per-message transmission of that message's nonce alongside the ciphertext, which F36 already
-  establishes as safe since nonces aren't secret.
-- **F71** (recommended) — Hardware support can change the practical ranking, not just the absolute
-  speed: AES (F54) benefits substantially from dedicated instructions (AES-NI) where available;
-  ChaCha20 (F57) is designed to be fast in pure software and can outperform AES on platforms without
+  generating state of its own. This asymmetric persistence is exactly what F65's and F66's failure
+  modes attack. Choosing F63's *random* nonce-generation strategy instead needs no persistent counter
+  state on either side between messages — only per-message transmission of that message's nonce
+  alongside the ciphertext, which F36 already establishes as safe since nonces aren't secret.
+- **F74** (recommended) — Hardware support can change the practical ranking, not just the absolute
+  speed: AES (F57) benefits substantially from dedicated instructions (AES-NI) where available;
+  ChaCha20 (F60) is designed to be fast in pure software and can outperform AES on platforms without
   AES-NI (e.g. some mobile/embedded hardware). This is a real tradeoff, not an absolute one —
   well-optimized software AES can still be competitive in some cases, so "AES needs AES-NI to be fast"
   should be read as typical, not as a strict requirement.
@@ -392,13 +420,13 @@ dimension, into facts with an actual measurable dimension attached, matching `ac
 ## Flags
 
 - **Resolved:** *crib-dragging*, *frequency analysis* (F27), *ciphertext stealing* (F16), and
-  *Decisional Diffie-Hellman problem (DDH)* (F56) were flagged as undefined in earlier rounds — none
+  *Decisional Diffie-Hellman problem (DDH)* (F59) were flagged as undefined in earlier rounds — none
   existed anywhere in the definitions corpus, not even the full 306-entry `precise-definitions.md`.
   All four now have precise entries in both `precise-definitions.md` and `pv080-definitions.md`, and
   their usages above are bold (defined) rather than italic (undefined).
-- ECB (F38), CBC/CTR (F36/F37/F51/F53), GCM (F43), and the section J named constructions (AES, RSA,
+- ECB (F39), CBC/CTR (F36/F37/F54/F56), GCM (F44), and the section J named constructions (AES, RSA,
   ElGamal, ChaCha20, DES, RC4) have no `precise-definitions.md` entry by design — they're
-  fact-subjects only, per doc 02 §4's named-artefact split. *AES-NI* and *add-rotate-XOR* (F57/F71)
+  fact-subjects only, per doc 02 §4's named-artefact split. *AES-NI* and *add-rotate-XOR* (F60/F74)
   are still informal hardware/technique terms, left undefined — implementation trivia rather than
   cryptographic concepts, arguably out of scope for a conceptual definitions file (judgment call, flag
   if you disagree).
@@ -414,9 +442,13 @@ dimension, into facts with an actual measurable dimension attached, matching `ac
 - F22 sits in section D (block-cipher iteration) rather than B (symmetric vs. asymmetric) even though
   it's a public-key-vs-block-cipher security comparison — kept there deliberately, anchored to F9 and
   D's proof-vs-empirical theme, rather than moved.
-- F13 and F42's key-authenticity/PKI concerns are deliberate stubs — the full certificates/PKI chain
+- F56 (parallelization vs. error propagation) sits in section I (Comparisons) rather than G (Modes) or
+  L (Practicality) — an external review suggested moving it; kept in I deliberately, since it's
+  exactly the kind of commonly-conflated pair section I exists for, not primarily a modes fact or a
+  measurable-benchmark fact.
+- F13 and F43's key-authenticity/PKI concerns are deliberate stubs — the full certificates/PKI chain
   isn't expanded here.
-- F69's numbers are representative of one commonly-cited security-level estimate, not a guaranteed or
+- F72's numbers are representative of one commonly-cited security-level estimate, not a guaranteed or
   permanent equivalence — worth a caveat if ever used in an assessment context rather than a comparison
   illustration.
 - Not yet checked against [`chains-draft.md`](chains-draft.md) for consistency — chains-draft predates
