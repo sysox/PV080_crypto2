@@ -1,0 +1,100 @@
+# chains.yaml — chain-instance records (stage-tagged nodes citing facts)
+#
+# STATUS: pilot, validated. One worked chain instance, reviewed by two independent external
+# passes plus one fix round (explicit branch scoping, node-level usecase_ref override, F25
+# assumption stated). Record shape confirmed ready to scale to the rest of facts-ciphers.md.
+# Decision background: fact-granularity-dilemma.md (three-layer model: facts -> chain-instance
+# nodes -> takeaways; stage lives on the node, not the fact).
+#
+# Schema:
+#   id / title        - a named chain instance
+#   usecase_ref        - id from usecases-ciphers.md (stage 1 of logical-chain.md); the chain's
+#                          default use case
+#   threat_ref          - id from usecases-ciphers.md (stage 2) - kept out of `nodes` deliberately,
+#                          same reasoning as activity-model.md's practical-examples-stay-separate rule
+#   nodes:
+#     id                - stable within this chain
+#     stage             - one of logical-chain.md's remaining 6 stages (security_goal, requirement,
+#                          mechanism, implementation_requirement, failure, attack)
+#     claim             - one-line human paraphrase of what this node asserts (not copied from the
+#                          fact verbatim - the fact is the source of truth, this is a chain-specific
+#                          gloss on it)
+#     fact_refs         - facts supporting this node; "F9:slug" form cites a sub-claim within a
+#                          bundled fact without splitting it (see fact-granularity-dilemma.md)
+#     leads_to          - ids of node(s) this one motivates; a list to allow branching (one
+#                          implementation requirement can fail in more than one way)
+#     usecase_ref        - OPTIONAL, node-level override of the chain's default usecase_ref, for a
+#                          node where the relevant use case genuinely shifts partway through a chain
+#                          (e.g. a failure mode that's specific to a deployment shape the earlier
+#                          nodes didn't assume)
+
+chains:
+  - id: nonce-reuse
+    title: Stream-cipher / CTR keystream reuse breaks confidentiality
+    usecase_ref: U2   # repeated communication under a shared key (U5 also relevant - see failure_multi_instance)
+    threat_ref: T1    # passive eavesdropper is sufficient for the base attack; no active adversary needed
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide confidentiality.
+        fact_refs: [F2]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: The keystream must never repeat under the same key. (This chain isolates the
+          uniqueness-specific failure mode; it assumes the keystream generator itself is properly
+          pseudorandom, F25 - a weak generator like RC4, F63, is a different chain, not this one.)
+        fact_refs: [F24, F25]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: A stream cipher (or a CTR-mode block cipher, structurally the same shape) combines
+          plaintext with a keystream via XOR, one unit at a time.
+        fact_refs: [F23]
+        leads_to: [impl_requirement]
+
+      - id: impl_requirement
+        stage: implementation_requirement
+        claim: One way to satisfy the uniqueness requirement in practice is a persistent,
+          monotonically incrementing counter (F64). The three failure nodes below are specific to
+          this counter-based choice. (The alternative - an independently and uniformly sampled
+          random nonce, also F64 - has a different failure profile entirely, the birthday-bound
+          collision tradeoff in F69/F70, not modeled in this chain instance.)
+        fact_refs: [F64]
+        leads_to: [failure_restart, failure_multi_instance, failure_wraparound]
+
+      - id: failure_restart
+        stage: failure
+        claim: A counter-based nonce that resets to zero on process restart, without persisting its
+          last value, silently reuses nonces already used before the crash.
+        fact_refs: [F66]
+        leads_to: [attack]
+
+      - id: failure_multi_instance
+        stage: failure
+        usecase_ref: U5   # overrides the chain's default U2 - horizontally-scaled shared-key
+                           # deployment is the use case this specific failure mode actually needs
+        claim: Multiple instances sharing one key (replicas, forked processes, cloned snapshots),
+          each independently counting from the same starting state, reproduce the exact same nonce
+          sequence across instances.
+        fact_refs: [F67]
+        leads_to: [attack]
+
+      - id: failure_wraparound
+        stage: failure
+        claim: A counter-based nonce whose bit-width is exceeded wraps around and repeats a
+          previously-used value within the lifetime of a single key.
+        fact_refs: [F65]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: XORing the two resulting ciphertexts gives exactly the XOR of the two plaintexts -
+          already a confidentiality violation regardless of what happens next; crib-dragging or
+          frequency analysis can go further and fully recover both plaintexts given enough structure
+          in the underlying data.
+        fact_refs: [F26, F27]
+        leads_to: []

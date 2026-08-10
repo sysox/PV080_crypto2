@@ -1,0 +1,77 @@
+# takeaways.yaml — capability-tagged claims, cited to facts and/or chain nodes
+#
+# STATUS: pilot, validated. Five takeaways built from the one chains.yaml pilot ("nonce-reuse"),
+# reviewed by two independent external passes plus one fix round (removed a redundant direct
+# fact_ref already supplied via chain_node_refs). Record shape confirmed ready to scale.
+# Decision background: fact-granularity-dilemma.md.
+#
+# Schema:
+#   id                  - stable id
+#   capability          - one of TODO/03_pedagogical_engine.md's vocabulary: RECALL, EXPLAIN,
+#                          DISTINGUISH, TRACE, PREDICT, CHOOSE, APPLY, IMPLEMENT, DEBUG, ATTACK,
+#                          DESIGN, JUSTIFY
+#   claim               - what the student should be able to do (not a fact restated)
+#   chain_node_refs      - "<chain id>:<node id>", inherits that node's fact_refs
+#   fact_refs           - direct fact citations not naturally owned by one chain node
+#   importance          - core / recommended / optional, same scale as facts-ciphers.md
+#   prompt_sketch       - one concrete question this could generate, to sanity-check the takeaway
+#                          is actually exercise-shaped and not just a restated fact
+
+takeaways:
+  - id: T1-justify-uniqueness
+    capability: JUSTIFY
+    claim: Explain why a stream cipher's keystream must never repeat under the same key, tracing
+      the requirement back to the confidentiality goal it protects.
+    chain_node_refs: [nonce-reuse:goal, nonce-reuse:requirement]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      A colleague says "reusing a nonce is bad practice, but it's not really a security problem
+      unless the attacker also has the key." Are they right? Justify your answer.
+
+  - id: T2-predict-xor-leak
+    capability: PREDICT
+    claim: Given two ciphertexts known to be produced under a reused keystream, predict what
+      XORing them together reveals, without performing any recovery attempt.
+    chain_node_refs: [nonce-reuse:attack]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Two messages were encrypted with the same stream-cipher key and nonce. Before writing any
+      code, predict what `ct1 XOR ct2` equals in terms of the plaintexts. Then verify in a notebook.
+
+  - id: T3-attack-recover-plaintexts
+    capability: ATTACK
+    claim: Given two ciphertexts produced under a reused keystream (and enough structure in the
+      underlying plaintexts, e.g. natural-language text), recover both plaintexts.
+    chain_node_refs: [nonce-reuse:attack]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      You're given two ciphertexts encrypted under the same key/nonce pair with a stream cipher.
+      Recover as much of both plaintexts as you can. (Hands-on notebook task - crib-dragging.)
+
+  - id: T4-debug-restart-bug
+    capability: DEBUG
+    claim: Given a service that resets its nonce counter to zero on every process restart, identify
+      why this is a real vulnerability (not a hypothetical one) and propose a fix.
+    chain_node_refs: [nonce-reuse:impl_requirement, nonce-reuse:failure_restart]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Here's a code snippet that encrypts log entries with AES-CTR, using an in-memory counter
+      starting at 0. The service is deployed as a container that restarts on crash. Find the bug;
+      fix it without breaking the existing message format.
+
+  - id: T5-design-multi-instance
+    capability: DESIGN
+    claim: Choose and justify a nonce-generation strategy for a horizontally-scaled service where
+      multiple instances share one key, explaining why the single-instance-safe strategy from
+      T4 is not sufficient here.
+    chain_node_refs: [nonce-reuse:impl_requirement, nonce-reuse:failure_multi_instance]
+    fact_refs: []   # F67 already supplied via chain_node_refs -> failure_multi_instance; no direct citation needed
+    importance: recommended
+    prompt_sketch: >
+      Your team wants to fix T4's bug by persisting the counter to disk. Someone points out the
+      service now runs as 5 replicas behind a load balancer, each with its own disk. Does the fix
+      still work? Design a strategy that does, and justify the tradeoff you chose.
