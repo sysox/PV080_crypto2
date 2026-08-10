@@ -1,6 +1,6 @@
 # Facts — ciphers
 
-Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and nine external
+Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and ten external
 review passes. No forced chain/stage structure — see [logical-chain.md](logical-chain.md) for that
 layer, which chains get reconstructed from these afterward once enough facts exist and repetition
 across them becomes visible (that's the compression step we agreed on).
@@ -317,9 +317,10 @@ example of it.
   proven equivalent to, the **Integer factorization problem** (factoring `n` breaks RSA; no proof
   shows breaking RSA requires factoring). Textbook (unpadded) RSA has two distinct weaknesses beyond
   F2's bare infeasible-recovery floor: it's deterministic (encrypting the same plaintext twice yields
-  the same ciphertext, enabling equality tests — an IND-CPA-style failure), and separately it's
-  multiplicatively homomorphic (`Enc(m₁)·Enc(m₂) ≡ Enc(m₁·m₂) mod n`, enabling ciphertext malleability
-  and chosen-ciphertext attacks — an IND-CCA-style failure, not a consequence of the determinism issue).
+  the same ciphertext, enabling equality tests between candidate plaintexts), and separately it's
+  multiplicatively homomorphic (`Enc(m₁)·Enc(m₂) ≡ Enc(m₁·m₂) mod n`, enabling an attacker to transform
+  one valid ciphertext into another without knowing the key — a distinct weakness, not a consequence
+  of the determinism issue).
   Practical RSA encryption requires randomized padding (e.g. RSA-OAEP) to close both gaps.
 - **F59** (core) — **ElGamal** is a second, independent concrete instance of **Public-key encryption**
   (F8, F9): its confidentiality rests on the **Decisional Diffie-Hellman problem (DDH)** in a
