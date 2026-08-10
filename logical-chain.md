@@ -5,6 +5,11 @@ This file defines the eight stage-types themselves — what each one *means* as 
 later fact files can instantiate the chain for real topics without re-litigating what "threat" or
 "requirement" means each time. It does not yet contain any cryptographic facts.
 
+Domain instantiations of stages 1–2 (use case, threat) live separately from the fact layer — see
+[usecases-ciphers.md](usecases-ciphers.md) for the cipher domain's use cases and threat profiles,
+kept apart from [facts-ciphers.md](facts-ciphers.md) per `activity-model.md`'s own separation of
+practical examples from the atom database.
+
 > use case → threat → security goal → requirement → mechanism/design choice →
 > implementation requirement → failure when violated → attack/consequence
 
