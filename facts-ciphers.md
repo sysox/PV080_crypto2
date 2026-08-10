@@ -1,6 +1,6 @@
 # Facts — ciphers
 
-Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and five external
+Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and six external
 review passes. No forced chain/stage structure — see [logical-chain.md](logical-chain.md) for that
 layer, which chains get reconstructed from these afterward once enough facts exist and repetition
 across them becomes visible (that's the compression step we agreed on).
@@ -128,9 +128,9 @@ Format: `id (importance) — statement`, importance from `activity-model.md`'s `
   requirement is necessary but not sufficient for this — a keystream generator can satisfy F24 (never
   repeating under the same key) while still being statistically distinguishable from random.
 - **F26** (core) — If the same keystream is reused, XORing the two resulting ciphertexts gives exactly
-  the XOR of the two plaintexts, without knowledge of the key — already enough to break any
-  meaningful confidentiality notion, since the adversary learns a non-trivial function of both
-  plaintexts.
+  the XOR of the two plaintexts, without knowledge of the key — already breaks confidentiality by
+  revealing a non-trivial relation between the two plaintexts (their XOR), independent of whether any
+  further recovery attempt succeeds.
 - **F27** (recommended) — The XOR-of-plaintexts from F26 can further allow an attacker to fully
   recover both plaintexts via *crib-dragging* or *frequency analysis*, given enough structure in the
   underlying data — full recovery isn't guaranteed, though F26 alone already broke confidentiality
@@ -210,9 +210,10 @@ Format: `id (importance) — statement`, importance from `activity-model.md`'s `
   exposed or acted upon; skipping or delaying that check externally can open **Padding oracle
   attack**-style vulnerabilities regardless of composition ordering (F44).
 - **F47** (core) — Given independently-keyed schemes (F45), verification-before-release (F46), an
-  unforgeable MAC, a semantically secure encryption scheme, IV/nonce/associated-data covered by the
-  MAC computation, and no exploitable implementation side channels, **Encrypt-then-MAC** is the
-  generically robust ordering among the three in F44: computing the MAC over the ciphertext lets
+  unforgeable MAC, an encryption scheme that itself provides confidentiality (F2),
+  IV/nonce/associated-data covered by the MAC computation, and no exploitable implementation side
+  channels, **Encrypt-then-MAC** is the generically robust ordering among the three in F44: computing
+  the MAC over the ciphertext lets
   integrity be checked without decrypting or trusting the encryption scheme's own robustness — a
   guarantee that depends on all of these stated assumptions, not one holding unconditionally
   regardless of the specific schemes combined.
@@ -269,9 +270,11 @@ example of it.
 - **F55** (core) — **RSA** is a concrete instance of **Public-key encryption** (F8): its hardness
   rests on the *RSA problem* (computing `e`-th roots modulo a composite `n`) — related to, but not
   proven equivalent to, the **Integer factorization problem** (factoring `n` breaks RSA; no proof
-  shows breaking RSA requires factoring). Textbook (unpadded) RSA is deterministic, which per F3 is
-  necessary but not sufficient for a full security guarantee — practical RSA encryption requires
-  randomized padding (e.g. RSA-OAEP) to achieve semantic security.
+  shows breaking RSA requires factoring). Textbook (unpadded) RSA is deterministic: encrypting the
+  same plaintext twice always yields the same ciphertext, letting an adversary test plaintext equality
+  or exploit RSA's multiplicative structure — a gap F2's bare infeasible-recovery requirement doesn't
+  rule out. Practical RSA encryption requires randomized padding (e.g. RSA-OAEP) to close it and
+  provide real confidentiality guarantees beyond F2's minimum.
 - **F56** (core) — **ElGamal** is a second, independent concrete instance of **Public-key encryption**
   (F8): its confidentiality rests on the *Decisional Diffie-Hellman assumption (DDH)* in a **Group** —
   a stronger assumption than the **Computational Diffie-Hellman problem (CDH)** alone, which only
@@ -359,13 +362,14 @@ dimension, into facts with an actual measurable dimension attached, matching `ac
   (roughly 2× larger than the symmetric key, but over an order of magnitude smaller than the matching
   RSA modulus) — the concrete, measurable reason ECC-based constructions scale better than RSA as
   security requirements increase, beyond F11's qualitative ECC note.
-- **F70** (recommended) — A counter-based **Stream cipher** (or a block-cipher mode built the same way,
-  e.g. CTR with a persistent counter) must maintain synchronized state — the current counter — across
-  the lifetime of a key, on both sender and receiver; this is exactly the persistent cross-message
-  state whose mishandling causes F62's and F63's failure modes. A scheme where each message instead
-  carries its own fresh, self-contained nonce needs no persistent counter state between messages —
-  only per-message transmission of that nonce alongside the ciphertext, which F36 already establishes
-  as safe since nonces aren't secret.
+- **F70** (recommended) — Whichever construction is used (stream cipher or a block-cipher mode like
+  CTR), it's specifically choosing F60's *counter-based* nonce-generation strategy — not the
+  construction itself — that requires persistent, synchronized state (the current counter value)
+  across the lifetime of a key, on both sender and receiver; this is exactly the persistent
+  cross-message state whose mishandling causes F62's and F63's failure modes. Choosing F60's *random*
+  nonce-generation strategy instead needs no persistent counter state between messages — only
+  per-message transmission of that message's nonce alongside the ciphertext, which F36 already
+  establishes as safe since nonces aren't secret.
 - **F71** (recommended) — Hardware support can change the practical ranking, not just the absolute
   speed: AES (F54) benefits substantially from dedicated instructions (AES-NI) where available;
   ChaCha20 (F57) is designed to be fast in pure software and can outperform AES on platforms without
