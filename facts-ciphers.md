@@ -1,6 +1,6 @@
 # Facts — ciphers
 
-Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and eight external
+Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and nine external
 review passes. No forced chain/stage structure — see [logical-chain.md](logical-chain.md) for that
 layer, which chains get reconstructed from these afterward once enough facts exist and repetition
 across them becomes visible (that's the compression step we agreed on).
@@ -55,9 +55,12 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
 - **F9** (core) — Public-key encryption rests on some asymmetric hardness structure — a capability the
   key-pair owner has that a public-only observer lacks — but that structure takes more than one shape.
   RSA fits the classic mold: a **Trapdoor one-way function**, easy to invert only with the trapdoor.
-  ElGamal (F59) does not: discrete-log-style inversion is hard for *everyone*, with no trapdoor at
-  all — confidentiality instead comes from the receiver alone being able to compute the shared value
-  from their private exponent (the Diffie-Hellman construction). Not every public-key encryption
+  ElGamal (F59) doesn't fit that mold: there's no single public function whose secret-keyed inverse
+  the private key unlocks. Instead the receiver's private exponent gives a different computational
+  shortcut — computing the shared value directly from their own exponent and the sender's public
+  value, without solving the (hard, for everyone else) discrete-log/CDH problem at all. The private
+  key still grants a genuine secret advantage, just via a different structural mechanism than
+  "inverting a trapdoor function." Not every public-key encryption
   scheme is a trapdoor one-way function in disguise; trapdoor functions are the standard foundation
   for RSA-style schemes specifically, not for public-key encryption in general.
 - **F10** (recommended) — Symmetric encryption needs no trapdoor/algebraic structure — a sufficiently
@@ -134,9 +137,9 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   requirement is necessary but not sufficient for this — a keystream generator can satisfy F24 (never
   repeating under the same key) while still being statistically distinguishable from random.
 - **F26** (core) — If the same keystream is reused, XORing the two resulting ciphertexts gives exactly
-  the XOR of the two plaintexts, without knowledge of the key — already breaks confidentiality by
-  revealing a non-trivial relation between the two plaintexts (their XOR), independent of whether any
-  further recovery attempt succeeds.
+  the XOR of the two plaintexts, without knowledge of the key — already violates the intended
+  **Confidentiality** security goal by revealing a non-trivial relation between the two plaintexts
+  (their XOR), independent of whether any further recovery attempt succeeds.
 - **F27** (recommended) — The XOR-of-plaintexts from F26 can further allow an attacker to fully
   recover both plaintexts via **Crib-dragging** or **Frequency analysis**, given enough structure in
   the underlying data — full recovery isn't guaranteed, though F26 alone already broke confidentiality
@@ -180,14 +183,20 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   stream-cipher keystream reuse: reusing a CTR nonce reproduces the same keystream, collapsing exactly
   to the F26/F27 attack; using a predictable IV in CBC can let an adversary distinguish encryptions of
   chosen plaintexts — a break of the mode, not of the underlying block cipher itself.
-- **F38** (recommended) — Even with perfectly managed nonces/IVs, encrypting enough data under one key
-  risks a birthday-bound collision among a block cipher's own output blocks (chaining values in CBC,
-  keystream blocks in CTR): after roughly `2^(n/2)` blocks for an n-bit block size, a collision becomes
-  likely by chance, and it leaks a relation between the two colliding plaintext blocks — mechanically
-  similar to F26's keystream-reuse attack, but caused by exhausting the block space itself rather than
-  by nonce mismanagement. This is a real practical concern for small block sizes (DES's 64-bit blocks,
-  F61, give a birthday bound around `2^32` blocks) and essentially irrelevant for AES's 128-bit blocks
-  (`2^64`, far outside practical reach) — the mechanism behind the real-world Sweet32 attack.
+- **F38** (recommended) — In CBC and other modes where a block cipher's input is chained from the
+  previous ciphertext (rather than a monotonically incrementing counter), encrypting enough data under
+  one key risks a birthday-bound *coincidental* collision among block-cipher inputs: after roughly
+  `2^(n/2)` blocks for an n-bit block size, two chained inputs are likely to coincide by chance even
+  with perfectly managed IVs. Because a block cipher is a permutation (F14), equal outputs mean equal
+  inputs, so an attacker who observes a ciphertext-block collision can deduce a relation between the
+  two corresponding plaintext blocks from values they can already see. This is a real practical
+  concern for small block sizes (DES's 64-bit blocks, F61, give a birthday bound around `2^32` blocks)
+  and essentially irrelevant for AES's 128-bit blocks (`2^64`) — the mechanism behind the real-world
+  Sweet32 attack. **CTR mode is not at risk this way**: its block-cipher input is the counter itself,
+  so as long as the counter doesn't repeat (F64), F14's permutation property *deterministically*
+  guarantees distinct inputs produce distinct outputs — no coincidental collision is possible at all.
+  CTR's only collision risk is the separate, non-probabilistic one from actual counter/nonce reuse
+  (F37).
 - **F39** (core) — Electronic Codebook (ECB) applies a block cipher independently to each block with
   no chaining, randomization, or counter — it is itself a (degenerate) mode of operation, not the
   absence of one — so identical plaintext blocks always produce identical ciphertext blocks under a
@@ -226,21 +235,24 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
 - **F47** (core) — Generic composition (F45) requires the encryption key and the MAC key be
   independently derived or otherwise separated; reusing one key for both primitives can create
   cross-primitive attacks even when each primitive is secure in isolation.
-- **F48** (core) — A verifier must not let any observable behavior — an error message, timing,
-  connection reset, or anything else external — depend on an internal parsing/validation step (such
-  as padding-validity) before authentication succeeds. This is a stronger requirement than "don't
-  release the plaintext": for constructions where decryption includes a padding check (e.g. CBC),
+- **F48** (core) — A verifier's observable behavior may depend on *whether* authentication succeeded
+  or failed overall — a single, uniform failure signal is fine and necessary — but must not further
+  depend on *why* it failed, and specifically not on an internal parsing/validation step (such as
+  padding-validity) evaluated before authentication succeeds. This is stronger than "don't release the
+  plaintext": for constructions where decryption includes a padding check (e.g. CBC),
   **MAC-then-encrypt** must decrypt — and therefore validate padding — before the MAC can even be
-  checked, so padding-validity itself becomes an observable oracle (a **Padding oracle attack**) even
-  if the plaintext is never explicitly exposed. **Encrypt-then-MAC** avoids this structurally: a
-  failed MAC check can reject before decryption, and any padding validation inside it, ever runs.
+  checked, so a distinguishable "bad padding" vs. "bad MAC" response becomes an observable oracle (a
+  **Padding oracle attack**), even though a single uniform "authentication failed" signal would have
+  been safe. **Encrypt-then-MAC** avoids this structurally: a failed MAC check rejects uniformly
+  before decryption, and any padding validation inside it, ever runs.
 - **F49** (recommended) — A **Padding oracle attack** exploits exactly the mechanism F48 describes:
   because **Padding** (F16) makes a decrypted block's validity checkable (well-formed padding or not),
   an attacker who can distinguish "valid padding" from "invalid padding" after decryption — via a
   different error, timing, or connection behavior — can use many such oracle queries, without knowing
   the key, to recover a CBC-mode plaintext one byte at a time, by manipulating bytes of the preceding
   ciphertext block and observing which manipulated values yield valid padding.
-- **F50** (core) — Given independently-keyed schemes (F47), verification-before-release (F48), an
+- **F50** (core) — Given independently-keyed schemes (F47), no parsing-dependent observable behavior
+  before authentication (F48), an
   unforgeable MAC, an encryption scheme that actually achieves its intended confidentiality
   **Security goal** (a stronger bar than F2's bare infeasible-recovery floor alone),
   IV/nonce/associated-data covered by the MAC computation, and no exploitable implementation side
