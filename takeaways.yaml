@@ -75,3 +75,112 @@ takeaways:
       Your team wants to fix T4's bug by persisting the counter to disk. Someone points out the
       service now runs as 5 replicas behind a load balancer, each with its own disk. Does the fix
       still work? Design a strategy that does, and justify the tradeoff you chose.
+
+  - id: T6-distinguish-ecb-is-a-mode
+    capability: DISTINGUISH
+    claim: Explain why ECB counts as a mode of operation at all, rather than "no mode" or "not
+      really encryption," while still identifying exactly why it fails.
+    chain_node_refs: [ecb-pattern-leakage:requirement, ecb-pattern-leakage:mechanism]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A student says "ECB isn't really a mode of operation, it's what you get when you don't use
+      one." Is this accurate? Answer precisely, using the actual definition of a mode.
+
+  - id: T7-predict-ecb-image
+    capability: PREDICT
+    claim: Given a bitmap image with large uniform-color regions, predict what its ECB-encrypted
+      form will visually look like, before running it.
+    chain_node_refs: [ecb-pattern-leakage:failure, ecb-pattern-leakage:attack]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Before running any code: if you AES-ECB-encrypt a BMP image that has a large solid-color
+      background, sketch what you expect the encrypted image to look like when rendered as pixels,
+      and why. Then verify in a notebook.
+
+  - id: T8-debug-ecb-choice
+    capability: DEBUG
+    claim: Given a code review showing a block cipher used directly (one call per block, no IV/
+      nonce parameter) to encrypt records at rest, identify the problem and the minimal fix.
+    chain_node_refs: [ecb-pattern-leakage:mechanism, ecb-pattern-leakage:attack]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Review this function: it AES-encrypts a record by splitting it into 16-byte blocks and
+      calling the raw block-cipher primitive on each one independently. What's wrong, concretely,
+      and what's the smallest change that fixes it?
+
+  - id: T9-choose-composition-ordering
+    capability: CHOOSE
+    claim: Given the three generic-composition orderings, choose Encrypt-then-MAC and justify why
+      the other two are unsafe, not just less conventional.
+    chain_node_refs: [composition-integrity:impl_requirement, composition-integrity:safe_etm]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      You need to add integrity to an existing encrypted channel by hand (no AEAD library
+      available). Three colleagues propose Encrypt-then-MAC, MAC-then-encrypt, and
+      Encrypt-and-MAC respectively. Which do you implement, and what's wrong with each of the
+      other two specifically - not just "less common"?
+
+  - id: T10-attack-padding-oracle
+    capability: ATTACK
+    claim: Given a service using MAC-then-encrypt over CBC that reveals whether padding was valid
+      (distinct error messages or timing), recover a plaintext byte at a time without the key.
+    chain_node_refs: [composition-integrity:failure_padding_oracle, composition-integrity:attack_padding_oracle]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      You have oracle access to a decryption endpoint that returns HTTP 400 for "bad padding" and
+      HTTP 401 for "bad MAC." Given one intercepted ciphertext, recover the plaintext. (Hands-on
+      notebook task.)
+
+  - id: T11-attack-tag-equality
+    capability: ATTACK
+    claim: Given an Encrypt-and-MAC scheme using a deterministic MAC, determine whether two
+      intercepted messages are identical without decrypting either.
+    chain_node_refs: [composition-integrity:failure_tag_leak, composition-integrity:attack_tag_leak]
+    fact_refs: []
+    importance: optional
+    prompt_sketch: >
+      Two ciphertexts were sent under Encrypt-and-MAC with a deterministic MAC (same key both
+      times). Without decrypting anything, determine whether the underlying plaintexts were the
+      same message. Explain why this works even though the MAC itself was never forged.
+
+  - id: T12-justify-rsa-determinism-gap
+    capability: JUSTIFY
+    claim: Explain why textbook RSA satisfying "hard to invert without the key" (the bare
+      confidentiality floor) does not make it secure in practice.
+    chain_node_refs: [rsa-determinism:requirement, rsa-determinism:mechanism_textbook]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      "RSA is secure because factoring is hard, and you can't invert RSA encryption without
+      factoring the modulus." A colleague uses this reasoning to justify encrypting each field of
+      a database directly with raw RSA. What's wrong with the reasoning, concretely?
+
+  - id: T13-distinguish-rsa-attacks
+    capability: DISTINGUISH
+    claim: Distinguish the equality-testing attack (from determinism) and the ciphertext-
+      transformation attack (from multiplicative homomorphism) as two separate consequences of two
+      separate properties, neither implying the other.
+    chain_node_refs: [rsa-determinism:attack_equality, rsa-determinism:attack_malleability]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      Two students each find a different attack against raw RSA: one tests whether two ciphertexts
+      encrypt the same plaintext, the other transforms a valid ciphertext into a new valid
+      ciphertext for a related plaintext. Are these the same underlying bug? Explain.
+
+  - id: T14-apply-oaep-fix
+    capability: APPLY
+    claim: Given a raw-RSA misuse scenario, identify which specific attack applies and confirm
+      that switching to RSA-OAEP closes it.
+    chain_node_refs: [rsa-determinism:mechanism_oaep]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A voting system encrypts each ballot ("yes" or "no") directly with a voter's raw RSA public
+      key. Show how an observer breaks ballot secrecy without any key material, then show that
+      switching to RSA-OAEP prevents the specific attack you found.

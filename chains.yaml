@@ -98,3 +98,182 @@ chains:
           in the underlying data.
         fact_refs: [F26, F27]
         leads_to: []
+
+  - id: ecb-pattern-leakage
+    title: ECB mode leaks plaintext structure without breaking the cipher
+    usecase_ref: U3   # data at rest under a long-lived key - the classic "encrypt this file/image" case
+    threat_ref: T1    # passive eavesdropper; no tampering needed to see the leak
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide confidentiality.
+        fact_refs: [F2]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: Repeated or related plaintext blocks must not produce identical or trivially related
+          ciphertext blocks.
+        fact_refs: [F35]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: Electronic Codebook (ECB) applies the block cipher independently to each block, with
+          no chaining, randomization, or counter - it is itself a mode, just a degenerate one, not
+          the absence of a mode.
+        fact_refs: [F39]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: Because encryption under a fixed key is deterministic, identical plaintext blocks
+          always produce identical ciphertext blocks - the chosen mechanism directly violates the
+          requirement it was supposed to satisfy.
+        fact_refs: [F39]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: An observer sees repeated ciphertext blocks and thereby learns the corresponding
+          plaintext blocks are identical - structural information leaked without recovering the key
+          or the plaintext content itself (the "ECB penguin" effect).
+        fact_refs: [F40]
+        leads_to: []
+
+  - id: composition-integrity
+    title: Adding integrity to encryption - one safe ordering, two unsafe ones
+    usecase_ref: U2   # repeated communication under a shared key
+    threat_ref: T2    # active adversary - this chain only matters once tampering is in scope
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must additionally provide integrity - confidentiality alone does not
+          imply it.
+        fact_refs: [F41]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: Detecting ciphertext tampering needs a separate mechanism using a secret, on top of
+          whatever already provides confidentiality.
+        fact_refs: [F43]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: Combine encryption with a MAC - either via a dedicated AEAD construction, or by hand
+          (generic composition) if no dedicated AEAD is used.
+        fact_refs: [F45, F46]
+        leads_to: [impl_requirement]
+
+      - id: impl_requirement
+        stage: implementation_requirement
+        claim: When composing by hand, the encryption key and MAC key must be independently
+          derived, and one of three orderings must be chosen - Encrypt-then-MAC, MAC-then-encrypt,
+          or Encrypt-and-MAC. The three are not equally safe.
+        fact_refs: [F46, F48]
+        leads_to: [failure_padding_oracle, failure_tag_leak, safe_etm]
+
+      - id: failure_padding_oracle
+        stage: failure
+        claim: "MAC-then-encrypt must decrypt - and therefore validate padding - before the MAC can
+          even be checked, so a distinguishable 'bad padding' vs. 'bad MAC' response becomes an
+          observable oracle."
+        fact_refs: [F49]
+        leads_to: [attack_padding_oracle]
+
+      - id: attack_padding_oracle
+        stage: attack
+        claim: An attacker who can distinguish valid from invalid padding after decryption can
+          recover a CBC-mode plaintext one byte at a time, without knowing the key.
+        fact_refs: [F50]
+        leads_to: []
+
+      - id: failure_tag_leak
+        stage: failure
+        claim: A MAC is designed only for unforgeability, not confidentiality, so computing it
+          directly over the plaintext (Encrypt-and-MAC) can leak information through the tag itself
+          - e.g. a deterministic MAC reveals repeated plaintexts via a repeated tag, independent of
+          the encryption half.
+        fact_refs: [F47]
+        leads_to: [attack_tag_leak]
+
+      - id: attack_tag_leak
+        stage: attack
+        claim: An adversary can test whether two messages are equal by comparing their tags,
+          without breaking the encryption or the MAC's own unforgeability at all.
+        fact_refs: [F47]
+        leads_to: []
+
+      - id: safe_etm
+        stage: mechanism
+        claim: "Encrypt-then-MAC - encrypt first, then compute the MAC over the resulting
+          ciphertext. Given independently-keyed schemes, verification-before-release, an
+          unforgeable MAC, and the other stated assumptions, this ordering is generically robust:
+          integrity can be checked without ever decrypting or trusting the encryption scheme's own
+          robustness."
+        fact_refs: [F51]
+        leads_to: []
+
+  - id: rsa-determinism
+    title: Textbook RSA's determinism and malleability, and why padding fixes both
+    usecase_ref: U1   # first contact, no pre-shared key - RSA's natural use case
+    threat_ref: T1    # passive eavesdropper suffices for the equality-testing attack; the
+                       # malleability attack additionally assumes some chosen-ciphertext access
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide confidentiality.
+        fact_refs: [F2]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: Meeting the bare infeasible-recovery floor is necessary but not sufficient for a
+          full security guarantee - stronger notions need more.
+        fact_refs: [F3]
+        leads_to: [mechanism_textbook, mechanism_oaep]
+
+      - id: mechanism_textbook
+        stage: mechanism
+        claim: "Textbook (unpadded) RSA: encrypt directly via modular exponentiation, no
+          randomization added."
+        fact_refs: ["F59:textbook"]
+        leads_to: [failure_determinism, failure_homomorphism]
+
+      - id: failure_determinism
+        stage: failure
+        claim: Encrypting the same plaintext twice always yields the same ciphertext.
+        fact_refs: ["F59:determinism"]
+        leads_to: [attack_equality]
+
+      - id: attack_equality
+        stage: attack
+        claim: An adversary can test plaintext equality between candidate messages just by
+          comparing ciphertexts, without knowing the key.
+        fact_refs: ["F59:determinism"]
+        leads_to: []
+
+      - id: failure_homomorphism
+        stage: failure
+        claim: "RSA's multiplicative structure means Enc(m1)*Enc(m2) = Enc(m1*m2) mod n."
+        fact_refs: ["F59:homomorphism"]
+        leads_to: [attack_malleability]
+
+      - id: attack_malleability
+        stage: attack
+        claim: An adversary can transform one valid ciphertext into another, predictably related,
+          valid ciphertext without knowing the key at all.
+        fact_refs: ["F59:homomorphism"]
+        leads_to: []
+
+      - id: mechanism_oaep
+        stage: mechanism
+        claim: Practical RSA encryption adds randomized padding (e.g. RSA-OAEP), closing both the
+          determinism and homomorphism gaps at once.
+        fact_refs: ["F59:oaep"]
+        leads_to: []
