@@ -46,6 +46,10 @@
 
 **Substitution** — A classical encryption technique that replaces each symbol with another according to a fixed rule.
 
+**Frequency analysis** — A cryptanalytic technique against substitution-style ciphers that infers plaintext or key material from the statistical distribution of symbols in ciphertext, exploiting the non-uniform symbol frequencies of the underlying plaintext language.
+
+**Crib-dragging** — A cryptanalytic technique against ciphertexts produced under a reused keystream: a guessed plaintext fragment (a "crib") is XORed against the combined ciphertext at successive offsets, and offsets producing plausible text incrementally reveal the keystream and both underlying plaintexts.
+
 ### A1. Data and structure
 
 **Alphabet** — A finite set of symbols.
@@ -230,6 +234,8 @@
 
 **Mode of operation** — A public procedure describing how a block cipher processes messages longer than one block and how IVs, nonces, or counters enter the computation.
 
+**Ciphertext stealing** — A technique for handling a final plaintext block shorter than the block size without padding: ciphertext bits are rearranged between the last two blocks so the total ciphertext length exactly matches the plaintext length.
+
 **Stream cipher** — A symmetric encryption construction that combines plaintext with a keystream, one unit at a time, where the keystream is generated from key material.
 
 **Synchronous stream cipher** — A stream cipher whose keystream depends only on the key and public parameters, not on the plaintext or ciphertext.
@@ -277,6 +283,8 @@
 **Discrete logarithm problem (DLP)** — Given a cyclic group, a generator `g`, and an element `h = gˣ`, finding `x` modulo `ord(g)`: the unique `x ∈ {0, 1, ..., ord(g)−1}` such that `gˣ = h`.
 
 **Computational Diffie-Hellman problem (CDH)** — Given a cyclic group, a generator `g`, and elements `gᵃ` and `gᵇ`, computing `gᵃᵇ`.
+
+**Decisional Diffie-Hellman problem (DDH)** — Given a cyclic group, a generator `g`, and elements `gᵃ`, `gᵇ`, and `gᶜ`, deciding whether `c ≡ ab (mod ord(g))`: distinguishing the distribution of `(gᵃ, gᵇ, gᵃᵇ)` from `(gᵃ, gᵇ, gᶜ)` for uniformly random `a, b, c`.
 
 **Group** — A set with a binary operation combining any two elements into another element of the set, satisfying closure, associativity, an identity element, and inverses: `(G, ∘)` with `∘: G × G → G` such that `∀a,b,c ∈ G: (a∘b)∘c = a∘(b∘c)`; `∃e ∈ G: ∀a ∈ G, e∘a = a∘e = a`; `∀a ∈ G, ∃a⁻¹ ∈ G: a∘a⁻¹ = a⁻¹∘a = e`.
 

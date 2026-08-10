@@ -87,7 +87,7 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   operation** fills (section G).
 - **F16** (core) — Separately, most messages don't divide evenly into whole blocks: encrypting a
   message that isn't an exact multiple of the block size additionally requires **Padding**,
-  *ciphertext stealing*, or another explicit length-handling mechanism for the final partial block —
+  **Ciphertext stealing**, or another explicit length-handling mechanism for the final partial block —
   a distinct problem from the multi-block handling in F15.
 
 ## D. Why block ciphers are iterated constructions
@@ -135,7 +135,7 @@ J) or a fact that's accumulated several tightly-related preconditions across rev
   revealing a non-trivial relation between the two plaintexts (their XOR), independent of whether any
   further recovery attempt succeeds.
 - **F27** (recommended) — The XOR-of-plaintexts from F26 can further allow an attacker to fully
-  recover both plaintexts via *crib-dragging* or *frequency analysis*, given enough structure in the
+  recover both plaintexts via **Crib-dragging** or **Frequency analysis**, given enough structure in the
   underlying data — full recovery isn't guaranteed, though F26 alone already broke confidentiality
   regardless of whether it succeeds.
 
@@ -282,7 +282,7 @@ example of it.
   rule out. Practical RSA encryption requires randomized padding (e.g. RSA-OAEP) to close it and
   provide real confidentiality guarantees beyond F2's minimum.
 - **F56** (core) — **ElGamal** is a second, independent concrete instance of **Public-key encryption**
-  (F8): its confidentiality rests on the *Decisional Diffie-Hellman assumption (DDH)* in a **Group** —
+  (F8): its confidentiality rests on the **Decisional Diffie-Hellman problem (DDH)** in a **Group** —
   a stronger assumption than the **Computational Diffie-Hellman problem (CDH)** alone, which only
   guarantees that computing the shared value is hard, not that ciphertexts built from it are
   indistinguishable. Encryption is inherently randomized (a fresh per-message ephemeral value), so it
@@ -391,14 +391,17 @@ dimension, into facts with an actual measurable dimension attached, matching `ac
 
 ## Flags
 
-- *crib-dragging*, *frequency analysis* (F27), *ciphertext stealing* (F16), and *Decisional
-  Diffie-Hellman assumption (DDH)* (F56) aren't defined anywhere yet — informal/undefined terms as far
-  as `pv080-definitions.md` goes (DDH in particular is a real, standard cryptographic assumption, just
-  not yet in the definitions file — worth adding if ElGamal's fact ends up load-bearing).
+- **Resolved:** *crib-dragging*, *frequency analysis* (F27), *ciphertext stealing* (F16), and
+  *Decisional Diffie-Hellman problem (DDH)* (F56) were flagged as undefined in earlier rounds — none
+  existed anywhere in the definitions corpus, not even the full 306-entry `precise-definitions.md`.
+  All four now have precise entries in both `precise-definitions.md` and `pv080-definitions.md`, and
+  their usages above are bold (defined) rather than italic (undefined).
 - ECB (F38), CBC/CTR (F36/F37/F51/F53), GCM (F43), and the section J named constructions (AES, RSA,
   ElGamal, ChaCha20, DES, RC4) have no `precise-definitions.md` entry by design — they're
   fact-subjects only, per doc 02 §4's named-artefact split. *AES-NI* and *add-rotate-XOR* (F57/F71)
-  are informal hardware/technique terms, same undefined status as crib-dragging.
+  are still informal hardware/technique terms, left undefined — implementation trivia rather than
+  cryptographic concepts, arguably out of scope for a conceptual definitions file (judgment call, flag
+  if you disagree).
 - DH, DSA, and ECDSA are deliberately not in section J — they're key-agreement/signature primitives,
   not encryption, so out of scope for a ciphers file. Natural seed for a future
   `facts-key-agreement.md`/`facts-signatures.md`, alongside F13's PKI stub.
