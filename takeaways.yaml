@@ -95,34 +95,41 @@ takeaways:
     fact_refs: []
     importance: core
     prompt_sketch: >
-      Before running any code: if you AES-ECB-encrypt a BMP image that has a large solid-color
-      background, sketch what you expect the encrypted image to look like when rendered as pixels,
-      and why. Then verify in a notebook.
+      Before running any code: you're given a BMP image with a large solid-color background. Its
+      pixel data (header already stripped, so you're encrypting raw pixel bytes only) happens to be
+      an exact multiple of 16 bytes, so no padding is needed. Sketch what you expect the
+      AES-ECB-encrypted pixel data to look like when rendered back as an image, and why. Then
+      verify in a notebook.
 
   - id: T8-debug-ecb-choice
     capability: DEBUG
     claim: Given a code review showing a block cipher used directly (one call per block, no IV/
-      nonce parameter) to encrypt records at rest, identify the problem and the minimal fix.
+      nonce parameter) to encrypt records at rest, identify the problem and apply the minimal fix
+      that restores confidentiality - integrity is explicitly out of scope for this task.
     chain_node_refs: [ecb-pattern-leakage:mechanism, ecb-pattern-leakage:attack]
     fact_refs: []
     importance: core
     prompt_sketch: >
       Review this function: it AES-encrypts a record by splitting it into 16-byte blocks and
-      calling the raw block-cipher primitive on each one independently. What's wrong, concretely,
-      and what's the smallest change that fixes it?
+      calling the raw block-cipher primitive on each one independently. What's wrong, concretely?
+      Fix it so it provides confidentiality (a proper mode with an IV/nonce, e.g. CBC or CTR) -
+      you don't need to add a MAC or authentication for this task, just fix the confidentiality
+      problem you found.
 
   - id: T9-choose-composition-ordering
     capability: CHOOSE
-    claim: Given the three generic-composition orderings, choose Encrypt-then-MAC and justify why
-      the other two are unsafe, not just less conventional.
+    claim: Given the three generic-composition orderings, choose Encrypt-then-MAC and explain what
+      specific risk each of the other two introduces - not that they're strictly broken, but that
+      neither is generically robust the way Encrypt-then-MAC is under the same minimal assumptions.
     chain_node_refs: [composition-integrity:impl_requirement, composition-integrity:safe_etm]
     fact_refs: []
     importance: core
     prompt_sketch: >
       You need to add integrity to an existing encrypted channel by hand (no AEAD library
       available). Three colleagues propose Encrypt-then-MAC, MAC-then-encrypt, and
-      Encrypt-and-MAC respectively. Which do you implement, and what's wrong with each of the
-      other two specifically - not just "less common"?
+      Encrypt-and-MAC respectively. Which do you implement? For each of the other two, name the
+      specific risk it introduces (not just "it's less common") and the condition under which that
+      risk would actually bite.
 
   - id: T10-attack-padding-oracle
     capability: ATTACK

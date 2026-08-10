@@ -32,7 +32,7 @@ fact in that section applies.
   Two parties who *do* already have a shared secret (from U1's resolution, an offline exchange, or
   whatever) exchange many messages over time, under the same key. This is where nonce/IV management
   actually starts to matter (sections E, F, G, K) — U1 only needs to establish the key once; U2 is
-  where reuse/wraparound/multi-instance failures (F24, F37, F64–F66) become live risks, because now
+  where reuse/wraparound/multi-instance failures (F24, F37, F64–F67) become live risks, because now
   there's a *stream* of messages under one key rather than a single exchange.
 
 - **U3 — Data at rest under a long-lived key, no live network protocol.**
@@ -46,12 +46,12 @@ fact in that section applies.
   An embedded/IoT device, a mobile platform, or a link with real bandwidth limits needs confidentiality
   but can't spend what a general-purpose server can on compute, memory, or ciphertext overhead. This is
   the use case section L (Practicality) exists for — throughput, key size, ciphertext expansion, and
-  the AES-NI-vs-ChaCha20 hardware-dependence fact (F60, F74) only matter *because* of a use case like
+  the AES-NI-vs-ChaCha20 hardware-dependence fact (F61, F75) only matter *because* of a use case like
   this one; on an unconstrained server none of it is a real decision.
 
 - **U5 — Horizontally-scaled service where multiple instances share one key.**
   Replicas behind a load balancer, forked worker processes, or cloned/restored container snapshots all
-  hold the same key and may independently need to encrypt. This is the use case F66 was silently
+  hold the same key and may independently need to encrypt. This is the use case F67 was silently
   assuming without ever stating it — the whole point of that fact (nonce uniqueness *across instances*,
   not just across time) only exists because of this specific deployment shape.
 
@@ -62,7 +62,7 @@ fact in that section applies.
   reading this" is always in scope.
 - **T2 — Active network adversary.** Can inject, alter, replay, reorder, or truncate messages, not just
   read them. This is what makes section H (confidentiality-vs-integrity, MAC, AEAD, replay/freshness,
-  F41–F51) necessary rather than optional — under T1 alone, confidentiality-only encryption is
+  F41–F52) necessary rather than optional — under T1 alone, confidentiality-only encryption is
   sufficient; T2 is the threat that breaks that sufficiency.
 
 Interesting combinations: U1×T1 and U1×T2 are both worth building exercises around (T2 adds F13's MITM

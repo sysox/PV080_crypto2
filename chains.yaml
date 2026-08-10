@@ -1,8 +1,8 @@
 # chains.yaml — chain-instance records (stage-tagged nodes citing facts)
 #
-# STATUS: pilot, validated. One worked chain instance, reviewed by two independent external
-# passes plus one fix round (explicit branch scoping, node-level usecase_ref override, F25
-# assumption stated). Record shape confirmed ready to scale to the rest of facts-ciphers.md.
+# STATUS: pilot, validated, then expanded to four chains and re-reviewed. Fix rounds so far:
+# explicit branch scoping, node-level usecase_ref/threat_ref overrides, F25 assumption stated,
+# AEAD-vs-manual-composition branch made explicit. Record shape confirmed ready to scale further.
 # Decision background: fact-granularity-dilemma.md (three-layer model: facts -> chain-instance
 # nodes -> takeaways; stage lives on the node, not the fact).
 #
@@ -10,8 +10,9 @@
 #   id / title        - a named chain instance
 #   usecase_ref        - id from usecases-ciphers.md (stage 1 of logical-chain.md); the chain's
 #                          default use case
-#   threat_ref          - id from usecases-ciphers.md (stage 2) - kept out of `nodes` deliberately,
-#                          same reasoning as activity-model.md's practical-examples-stay-separate rule
+#   threat_ref          - id from usecases-ciphers.md (stage 2); the chain's default threat -
+#                          kept out of `nodes` deliberately, same reasoning as activity-model.md's
+#                          practical-examples-stay-separate rule
 #   nodes:
 #     id                - stable within this chain
 #     stage             - one of logical-chain.md's remaining 6 stages (security_goal, requirement,
@@ -25,8 +26,12 @@
 #                          implementation requirement can fail in more than one way)
 #     usecase_ref        - OPTIONAL, node-level override of the chain's default usecase_ref, for a
 #                          node where the relevant use case genuinely shifts partway through a chain
-#                          (e.g. a failure mode that's specific to a deployment shape the earlier
-#                          nodes didn't assume)
+#                          (e.g. a failure mode specific to a deployment shape the earlier nodes
+#                          didn't assume)
+#     threat_ref          - OPTIONAL, node-level override of the chain's default threat_ref, for a
+#                          branch that genuinely needs a different adversary capability than the
+#                          rest of the chain (e.g. one branch needs only passive observation, a
+#                          sibling branch needs active chosen-ciphertext-style interaction)
 
 chains:
   - id: nonce-reuse
@@ -143,7 +148,8 @@ chains:
         leads_to: []
 
   - id: composition-integrity
-    title: Adding integrity to encryption - one safe ordering, two unsafe ones
+    title: Adding integrity to encryption - AEAD or hand-composed, and not every hand-composed
+      ordering is equally safe
     usecase_ref: U2   # repeated communication under a shared key
     threat_ref: T2    # active adversary - this chain only matters once tampering is in scope
 
@@ -160,13 +166,21 @@ chains:
         claim: Detecting ciphertext tampering needs a separate mechanism using a secret, on top of
           whatever already provides confidentiality.
         fact_refs: [F43]
-        leads_to: [mechanism]
+        leads_to: [mechanism_aead, mechanism_manual]
 
-      - id: mechanism
+      - id: mechanism_aead
         stage: mechanism
-        claim: Combine encryption with a MAC - either via a dedicated AEAD construction, or by hand
-          (generic composition) if no dedicated AEAD is used.
-        fact_refs: [F45, F46]
+        claim: Use a dedicated AEAD construction (e.g. GCM), which packages confidentiality and
+          integrity into one integrated primitive with a well-defined failure behavior - the
+          standard modern default, and safe without the caveats below.
+        fact_refs: [F45]
+        leads_to: []
+
+      - id: mechanism_manual
+        stage: mechanism
+        claim: If no dedicated AEAD construction is used, combine encryption with a MAC by hand
+          (generic composition) instead.
+        fact_refs: [F46]
         leads_to: [impl_requirement]
 
       - id: impl_requirement
@@ -260,14 +274,18 @@ chains:
 
       - id: failure_homomorphism
         stage: failure
+        threat_ref: T2   # overrides the chain's default T1 - transforming a ciphertext and getting
+                          # it decrypted/processed needs an active capability, not just observation
         claim: "RSA's multiplicative structure means Enc(m1)*Enc(m2) = Enc(m1*m2) mod n."
         fact_refs: ["F59:homomorphism"]
         leads_to: [attack_malleability]
 
       - id: attack_malleability
         stage: attack
-        claim: An adversary can transform one valid ciphertext into another, predictably related,
-          valid ciphertext without knowing the key at all.
+        threat_ref: T2
+        claim: An adversary can transform a ciphertext into another, predictably related,
+          ciphertext, and submit it for decryption/processing to exploit the relation - this needs
+          an active capability, unlike the passive-observer equality test above.
         fact_refs: ["F59:homomorphism"]
         leads_to: []
 
