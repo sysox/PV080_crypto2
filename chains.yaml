@@ -1,8 +1,11 @@
 # chains.yaml — chain-instance records (stage-tagged nodes citing facts)
 #
-# STATUS: pilot, validated, then expanded to four chains and re-reviewed. Fix rounds so far:
-# explicit branch scoping, node-level usecase_ref/threat_ref overrides, F25 assumption stated,
-# AEAD-vs-manual-composition branch made explicit. Record shape confirmed ready to scale further.
+# STATUS: 4 chains validated (nonce-reuse, ecb-pattern-leakage, composition-integrity,
+# rsa-determinism). 6 more added as `status: candidate` (replay-freshness, random-nonce-collision,
+# public-key-binding, stream-pseudorandomness, block-cipher-iteration, otp-tradeoff) - reviewed
+# once, 3 citation/content issues fixed (an overreaching mechanism-node citation, a circular
+# stub-restating mechanism node removed, an imprecise attack-node citation); not yet promoted out
+# of candidate status pending a second review pass, same process as the first 4.
 # Decision background: fact-granularity-dilemma.md (three-layer model: facts -> chain-instance
 # nodes -> takeaways; stage lives on the node, not the fact).
 #
@@ -294,4 +297,257 @@ chains:
         claim: Practical RSA encryption adds randomized padding (e.g. RSA-OAEP), closing both the
           determinism and homomorphism gaps at once.
         fact_refs: ["F59:oaep"]
+        leads_to: []
+
+  # Candidate chains below are not yet validated; review their node boundaries and prompts before
+  # promoting them to the pilot set.
+
+  - id: replay-freshness
+    status: candidate
+    title: Authentication alone does not prevent replay or reordering
+    usecase_ref: U2
+    threat_ref: T2
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: Beyond integrity of a single message's content, the communication must also reject
+          stale, duplicated, or reordered messages - a goal integrity alone doesn't cover, since a
+          replayed message has perfectly valid authentication.
+        fact_refs: [F52]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: Freshness or sequence information must be authenticated and checked by the verifier.
+        fact_refs: [F52]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: "Whatever authentication mechanism is used (AEAD, F45, or a generic composition,
+          F46) must have the freshness/sequence value included in what it authenticates - neither
+          F45 nor F46 describe this specifically; F52 is the fact that requires it. (This chain's
+          mechanism content is thin: no current fact spells out a concrete freshness mechanism,
+          e.g. sequence numbers as AEAD associated data - a real gap, not just a citation gap.)"
+        fact_refs: [F52]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: A previously valid ciphertext can be accepted again, or accepted out of order, when
+          its freshness or sequence information is absent or not authenticated.
+        fact_refs: [F52]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: An active adversary can replay, delete, or reorder messages without forging their
+          authenticated content.
+        fact_refs: [F52]
+        leads_to: []
+
+  - id: random-nonce-collision
+    status: candidate
+    title: Random nonce collisions recreate keystream reuse probabilistically
+    usecase_ref: U2
+    threat_ref: T1
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide confidentiality.
+        fact_refs: [F2]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: A nonce-generation strategy must make reuse of a key/nonce pair negligibly likely.
+        fact_refs: [F24, F25]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: Generate each nonce independently and uniformly at random from a sufficiently large
+          space instead of using a persistent counter.
+        fact_refs: [F64, F70]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: A random nonce collision produces the same key/nonce pair for two messages, despite
+          there being no counter reset or explicit reuse operation.
+        fact_refs: [F24, F70]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: The colliding messages reuse a keystream, so XORing their ciphertexts reveals the XOR
+          of their plaintexts and may enable plaintext recovery.
+        fact_refs: [F26, F27]
+        leads_to: []
+
+  - id: public-key-binding
+    status: candidate
+    title: Unauthenticated public keys enable man-in-the-middle attacks
+    usecase_ref: U1
+    threat_ref: T2
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: First-contact encryption must keep the intended parties confidential from an active
+          intermediary.
+        fact_refs: [F2, F8]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: "The public key must be authentically bound to its owner before it is trusted. (No
+          `mechanism` node here: this chain has no real mechanism content to cite - F13 itself is a
+          deliberate stub deferring the actual binding mechanism, certificates/PKI, to a future
+          file. This chain names the requirement and its failure mode, not how binding is achieved.)"
+        fact_refs: [F13]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: An active adversary substitutes a public key while the recipient believes it belongs
+          to the intended party.
+        fact_refs: [F13]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: The adversary can decrypt and re-encrypt traffic while both endpoints believe their
+          public-key encryption is protecting the channel.
+        fact_refs: [F13]
+        leads_to: []
+
+  - id: stream-pseudorandomness
+    status: candidate
+    title: A unique keystream can still be distinguishable from random
+    usecase_ref: U2
+    threat_ref: T1
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The stream cipher must provide computational confidentiality, not merely avoid exact
+          keystream repetition.
+        fact_refs: [F2, F25]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: The keystream must be computationally indistinguishable from a truly random sequence.
+        fact_refs: [F25]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: Expand a short secret key with a secure PRNG/CSPRNG rather than using a visibly
+          biased generator.
+        fact_refs: [F34]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: A generator can avoid nonce reuse while still producing statistically detectable
+          keystream biases, as in RC4's early output.
+        fact_refs: [F25, F63]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: An observer can distinguish the keystream from random and exploit the bias without
+          first recovering the key or relying on nonce reuse.
+        fact_refs: [F25, F63]
+        leads_to: []
+
+  - id: block-cipher-iteration
+    status: candidate
+    title: Iterated rounds make a compact block-cipher description behave randomly
+    usecase_ref: U3
+    threat_ref: T1
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: A compactly keyed block cipher should hide exploitable structure from an observer who
+          lacks the key.
+        fact_refs: [F17, F18]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: The construction must accumulate enough non-linearity, confusion, and diffusion to
+          make the composed permutation resemble a random permutation.
+        fact_refs: [F18, F19, F20]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: Iterate keyed round functions under a key schedule across many rounds.
+        fact_refs: [F19]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: Too few rounds or insufficient non-linearity leaves statistical structure intact.
+        fact_refs: [F21]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: Differential or linear cryptanalysis can exploit the remaining structure.
+        fact_refs: [F21]
+        leads_to: []
+
+  - id: otp-tradeoff
+    status: candidate
+    title: One-time pad perfection trades computation for key distribution
+    usecase_ref: U2
+    threat_ref: T1
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The system should provide confidentiality even against an adversary with unlimited
+          computational power.
+        fact_refs: [F29]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: The keystream must be truly random, at least as long as the message, and used only
+          once.
+        fact_refs: [F28, F32, F33]
+        leads_to: [mechanism]
+
+      - id: mechanism
+        stage: mechanism
+        claim: Use a one-time pad rather than expanding a short key into a computationally secure
+          keystream.
+        fact_refs: [F28, F34]
+        leads_to: [implementation_requirement]
+
+      - id: implementation_requirement
+        stage: implementation_requirement
+        claim: Distribute and protect a truly random key as long as every message and never reuse it.
+        fact_refs: [F32, F33]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: Reusing the one-time-pad key collapses the construction into the two-time-pad
+          keystream-reuse failure.
+        fact_refs: [F32]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: The attacker obtains the XOR of the plaintexts and may recover both when their
+          structure is sufficiently constrained.
+        fact_refs: [F26, F27]
         leads_to: []

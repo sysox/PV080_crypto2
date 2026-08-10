@@ -191,3 +191,86 @@ takeaways:
       A voting system encrypts each ballot ("yes" or "no") directly with a voter's raw RSA public
       key. Show how an observer breaks ballot secrecy without any key material, then show that
       switching to RSA-OAEP prevents the specific attack you found.
+
+  # Candidate takeaways below correspond to candidate chains in chains.yaml. They are not yet
+  # validated; review their prompts and capability alignment before promotion.
+
+  - id: T15-justify-replay-protection
+    status: candidate
+    capability: JUSTIFY
+    claim: Explain why authenticated encryption alone does not necessarily prevent replay,
+      deletion, or reordering.
+    chain_node_refs: [replay-freshness:goal, replay-freshness:requirement]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      An engineer says, "Every message has a valid AEAD tag, so an attacker cannot replay an old
+      payment request." Is the argument sufficient? Identify the missing protection and explain
+      what the verifier must check.
+
+  - id: T16-design-random-nonces
+    status: candidate
+    capability: DESIGN
+    claim: Design a random-nonce strategy whose collision probability remains negligible under a
+      stated message volume and shared-key lifetime.
+    chain_node_refs: [random-nonce-collision:mechanism, random-nonce-collision:failure]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A service will encrypt 10^9 messages under one key and cannot persist a counter. Choose a
+      nonce-generation strategy, estimate the collision risk, and explain what would happen if a
+      collision occurred.
+
+  - id: T17-attack-public-key-substitution
+    status: candidate
+    capability: ATTACK
+    claim: Show how an active intermediary defeats confidentiality when a public key is not
+      authenticated.
+    chain_node_refs: [public-key-binding:requirement, public-key-binding:failure,
+      public-key-binding:attack]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Alice downloads Bob's public key over an unauthenticated channel and encrypts a session key
+      with it. Construct the intermediary's substitution attack and identify what authenticated
+      binding must prevent it.
+
+  - id: T18-distinguish-keystream-failures
+    status: candidate
+    capability: DISTINGUISH
+    claim: Distinguish nonce/key reuse from a keystream generator that is distinguishable from
+      random even when nonces are unique.
+    chain_node_refs: [stream-pseudorandomness:requirement, stream-pseudorandomness:failure]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      Two stream-cipher implementations never reuse a nonce. One leaks plaintext relations after
+      reuse; the other exhibits biased early keystream bytes. Identify which security requirement
+      each violates and why the fixes differ.
+
+  - id: T19-explain-block-rounds
+    status: candidate
+    capability: EXPLAIN
+    claim: Explain how iterated keyed rounds reconcile a compact key with a permutation that hides
+      exploitable structure.
+    chain_node_refs: [block-cipher-iteration:requirement, block-cipher-iteration:mechanism,
+      block-cipher-iteration:failure]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A proposed block cipher uses a short key and only two weak rounds. Predict what kind of
+      structure an attacker should look for, then explain which design properties and extra rounds
+      are intended to remove it.
+
+  - id: T20-choose-otp-or-stream-cipher
+    status: candidate
+    capability: CHOOSE
+    claim: Choose between a one-time pad and a practical stream cipher by weighing information-
+      theoretic secrecy against key distribution and operational cost.
+    chain_node_refs: [otp-tradeoff:goal, otp-tradeoff:requirement, otp-tradeoff:mechanism]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      You must protect a 1 GB message against an adversary with unlimited computation, but the
+      sender and receiver can pre-share only 256 bits. Is a one-time pad feasible? If not, identify
+      exactly which requirement forces the design choice and what security tradeoff results.
