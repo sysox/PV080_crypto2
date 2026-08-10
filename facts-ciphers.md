@@ -1,6 +1,6 @@
 # Facts — ciphers
 
-Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and six external
+Atomic, flat facts about cipher-related terms, pulled from the cipher discussion and seven external
 review passes. No forced chain/stage structure — see [logical-chain.md](logical-chain.md) for that
 layer, which chains get reconstructed from these afterward once enough facts exist and repetition
 across them becomes visible (that's the compression step we agreed on).
@@ -14,7 +14,10 @@ and ECDSA are key-agreement/signature primitives, not encryption, and are delibe
 later file (see Flags).
 
 Format: `id (importance) — statement`, importance from `activity-model.md`'s `core`/`recommended`/
-`optional` scale.
+`optional` scale. "Statement" is usually one atomic sentence, but a named-construction fact (section
+J) or a fact that's accumulated several tightly-related preconditions across review rounds may bundle
+2–3 clauses into one fact rather than fragment into several new IDs — a deliberate choice (see
+`fact-extraction-process.md` §4), not an atomicity lapse.
 
 ---
 
@@ -158,7 +161,9 @@ Format: `id (importance) — statement`, importance from `activity-model.md`'s `
   is information-theoretically perfect but not practical at scale.
 - **F34** (recommended) — Practical stream ciphers replace OTP's truly random keystream with one
   expanded from a short key via a **PRNG**/**CSPRNG**, trading perfect/information-theoretic secrecy
-  for computational security in exchange for practical key distribution.
+  for computational security in exchange for practical key distribution — the expanded keystream must
+  still satisfy F25's pseudorandomness requirement; a PRNG/CSPRNG is exactly what's meant to provide
+  that, and RC4 (F59) is the case where the generator falls short of it.
 
 ## G. Modes of operation and ECB
 
@@ -210,7 +215,8 @@ Format: `id (importance) — statement`, importance from `activity-model.md`'s `
   exposed or acted upon; skipping or delaying that check externally can open **Padding oracle
   attack**-style vulnerabilities regardless of composition ordering (F44).
 - **F47** (core) — Given independently-keyed schemes (F45), verification-before-release (F46), an
-  unforgeable MAC, an encryption scheme that itself provides confidentiality (F2),
+  unforgeable MAC, an encryption scheme that actually achieves its intended confidentiality
+  **Security goal** (a stronger bar than F2's bare infeasible-recovery floor alone),
   IV/nonce/associated-data covered by the MAC computation, and no exploitable implementation side
   channels, **Encrypt-then-MAC** is the generically robust ordering among the three in F44: computing
   the MAC over the ciphertext lets
@@ -364,10 +370,14 @@ dimension, into facts with an actual measurable dimension attached, matching `ac
   security requirements increase, beyond F11's qualitative ECC note.
 - **F70** (recommended) — Whichever construction is used (stream cipher or a block-cipher mode like
   CTR), it's specifically choosing F60's *counter-based* nonce-generation strategy — not the
-  construction itself — that requires persistent, synchronized state (the current counter value)
-  across the lifetime of a key, on both sender and receiver; this is exactly the persistent
-  cross-message state whose mishandling causes F62's and F63's failure modes. Choosing F60's *random*
-  nonce-generation strategy instead needs no persistent counter state between messages — only
+  construction itself — that requires persistent state (the current counter value) across the
+  lifetime of a key. The asymmetry matters: the sender/nonce-allocator side always needs this
+  persistence, to know the next unused value; the receiver only needs it too if the nonce is implicit
+  (derived from its own synchronized counter rather than read off each message) — if the nonce is
+  transmitted alongside the ciphertext, the receiver just reads it per message and carries no
+  generating state of its own. This asymmetric persistence is exactly what F62's and F63's failure
+  modes attack. Choosing F60's *random* nonce-generation strategy instead needs no persistent counter
+  state on either side between messages — only
   per-message transmission of that message's nonce alongside the ciphertext, which F36 already
   establishes as safe since nonces aren't secret.
 - **F71** (recommended) — Hardware support can change the practical ranking, not just the absolute
