@@ -1,11 +1,14 @@
 # chains.yaml — chain-instance records (stage-tagged nodes citing facts)
 #
-# STATUS: 4 chains validated (nonce-reuse, ecb-pattern-leakage, composition-integrity,
-# rsa-determinism). 6 more added as `status: candidate` (replay-freshness, random-nonce-collision,
-# public-key-binding, stream-pseudorandomness, block-cipher-iteration, otp-tradeoff) - reviewed
-# once, 3 citation/content issues fixed (an overreaching mechanism-node citation, a circular
-# stub-restating mechanism node removed, an imprecise attack-node citation); not yet promoted out
-# of candidate status pending a second review pass, same process as the first 4.
+# STATUS: 10 chains validated, all `status: candidate` markers cleared. The original 4
+# (nonce-reuse, ecb-pattern-leakage, composition-integrity, rsa-determinism) went through two
+# review rounds; the 6 added later (replay-freshness, random-nonce-collision, public-key-binding,
+# stream-pseudorandomness, block-cipher-iteration, otp-tradeoff) also went through two rounds
+# before promotion (5 citation/content issues found and fixed across both rounds - see git log).
+# Two chains (replay-freshness, public-key-binding) are honestly thinner than the rest: both lean
+# on one fact (F52, F13 respectively) across most of their nodes because the fact base doesn't yet
+# have deeper content there (freshness mechanisms, certificates/PKI are explicitly future-file
+# territory) - kept as-is with that limitation noted inline rather than padded out artificially.
 # Decision background: fact-granularity-dilemma.md (three-layer model: facts -> chain-instance
 # nodes -> takeaways; stage lives on the node, not the fact).
 #
@@ -303,7 +306,6 @@ chains:
   # promoting them to the pilot set.
 
   - id: replay-freshness
-    status: candidate
     title: Authentication alone does not prevent replay or reordering
     usecase_ref: U2
     threat_ref: T2
@@ -348,7 +350,6 @@ chains:
         leads_to: []
 
   - id: random-nonce-collision
-    status: candidate
     title: Random nonce collisions recreate keystream reuse probabilistically
     usecase_ref: U2
     threat_ref: T1
@@ -363,7 +364,7 @@ chains:
       - id: requirement
         stage: requirement
         claim: A nonce-generation strategy must make reuse of a key/nonce pair negligibly likely.
-        fact_refs: [F24, F25]
+        fact_refs: [F24]
         leads_to: [mechanism]
 
       - id: mechanism
@@ -388,7 +389,6 @@ chains:
         leads_to: []
 
   - id: public-key-binding
-    status: candidate
     title: Unauthenticated public keys enable man-in-the-middle attacks
     usecase_ref: U1
     threat_ref: T2
@@ -425,7 +425,6 @@ chains:
         leads_to: []
 
   - id: stream-pseudorandomness
-    status: candidate
     title: A unique keystream can still be distinguishable from random
     usecase_ref: U2
     threat_ref: T1
@@ -466,7 +465,6 @@ chains:
         leads_to: []
 
   - id: block-cipher-iteration
-    status: candidate
     title: Iterated rounds make a compact block-cipher description behave randomly
     usecase_ref: U3
     threat_ref: T1
@@ -505,7 +503,6 @@ chains:
         leads_to: []
 
   - id: otp-tradeoff
-    status: candidate
     title: One-time pad perfection trades computation for key distribution
     usecase_ref: U2
     threat_ref: T1

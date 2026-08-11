@@ -1,8 +1,10 @@
 # takeaways.yaml — capability-tagged claims, cited to facts and/or chain nodes
 #
-# STATUS: pilot, validated. Five takeaways built from the one chains.yaml pilot ("nonce-reuse"),
-# reviewed by two independent external passes plus one fix round (removed a redundant direct
-# fact_ref already supplied via chain_node_refs). Record shape confirmed ready to scale.
+# STATUS: 20 takeaways validated across all 10 chains.yaml chains, all `status: candidate`
+# markers cleared. Capability coverage so far: ATTACK x4, JUSTIFY x3, DISTINGUISH x3, PREDICT x2,
+# DEBUG x2, DESIGN x2, CHOOSE x2, APPLY x1, EXPLAIN x1 - RECALL, TRACE, and IMPLEMENT still have
+# zero takeaways, noted as an open gap (chain-construction-process.md's final section) rather
+# than filled artificially; no current chain naturally calls for them yet.
 # Decision background: fact-granularity-dilemma.md.
 #
 # Schema:
@@ -196,7 +198,6 @@ takeaways:
   # validated; review their prompts and capability alignment before promotion.
 
   - id: T15-justify-replay-protection
-    status: candidate
     capability: JUSTIFY
     claim: Explain why authenticated encryption alone does not necessarily prevent replay,
       deletion, or reordering.
@@ -209,7 +210,6 @@ takeaways:
       what the verifier must check.
 
   - id: T16-design-random-nonces
-    status: candidate
     capability: DESIGN
     claim: Design a random-nonce strategy whose collision probability remains negligible under a
       stated message volume and shared-key lifetime.
@@ -222,7 +222,6 @@ takeaways:
       collision occurred.
 
   - id: T17-attack-public-key-substitution
-    status: candidate
     capability: ATTACK
     claim: Show how an active intermediary defeats confidentiality when a public key is not
       authenticated.
@@ -236,7 +235,6 @@ takeaways:
       binding must prevent it.
 
   - id: T18-distinguish-keystream-failures
-    status: candidate
     capability: DISTINGUISH
     claim: Distinguish nonce/key reuse from a keystream generator that is distinguishable from
       random even when nonces are unique.
@@ -249,7 +247,6 @@ takeaways:
       each violates and why the fixes differ.
 
   - id: T19-explain-block-rounds
-    status: candidate
     capability: EXPLAIN
     claim: Explain how iterated keyed rounds reconcile a compact key with a permutation that hides
       exploitable structure.
@@ -258,12 +255,12 @@ takeaways:
     fact_refs: []
     importance: recommended
     prompt_sketch: >
-      A proposed block cipher uses a short key and only two weak rounds. Predict what kind of
-      structure an attacker should look for, then explain which design properties and extra rounds
-      are intended to remove it.
+      A colleague proposes a block cipher with a 128-bit key but only a single round, arguing "the
+      key is already unguessable, why do we need more than one round?" Explain what a single round
+      fails to provide that a random permutation would, and why iterating the round function (not
+      lengthening the key) is what actually closes that gap.
 
   - id: T20-choose-otp-or-stream-cipher
-    status: candidate
     capability: CHOOSE
     claim: Choose between a one-time pad and a practical stream cipher by weighing information-
       theoretic secrecy against key distribution and operational cost.
