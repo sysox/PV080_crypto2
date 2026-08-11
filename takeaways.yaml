@@ -1,10 +1,11 @@
 # takeaways.yaml — capability-tagged claims, cited to facts and/or chain nodes
 #
-# STATUS: 20 takeaways validated across all 10 chains.yaml chains, all `status: candidate`
-# markers cleared. Capability coverage so far: ATTACK x4, JUSTIFY x3, DISTINGUISH x3, PREDICT x2,
-# DEBUG x2, DESIGN x2, CHOOSE x2, APPLY x1, EXPLAIN x1 - RECALL, TRACE, and IMPLEMENT still have
-# zero takeaways, noted as an open gap (chain-construction-process.md's final section) rather
-# than filled artificially; no current chain naturally calls for them yet.
+# STATUS: 25 takeaways across 13 chains.yaml chains. First 20 (chains 1-10) fully validated.
+# 5 more added alongside the newest 3 chains (T21-T25: TRACE and IMPLEMENT filled - both were
+# previously zero - plus one more each of JUSTIFY/ATTACK/ATTACK) - not yet through a second
+# review round, same caveat as chains.yaml. Capability coverage: ATTACK x6, JUSTIFY x4,
+# DISTINGUISH x3, PREDICT x2, DEBUG x2, DESIGN x2, CHOOSE x2, APPLY x1, EXPLAIN x1, TRACE x1,
+# IMPLEMENT x1 - only RECALL still has zero, left open rather than filled artificially.
 # Decision background: fact-granularity-dilemma.md.
 #
 # Schema:
@@ -271,3 +272,68 @@ takeaways:
       You must protect a 1 GB message against an adversary with unlimited computation, but the
       sender and receiver can pre-share only 256 bits. Is a one-time pad feasible? If not, identify
       exactly which requirement forces the design choice and what security tradeoff results.
+
+  - id: T21-trace-hybrid-encryption
+    capability: TRACE
+    claim: Trace how a plaintext gets from sender to recipient under hybrid encryption - which
+      key encrypts what, and in what order.
+    chain_node_refs: [hybrid-encryption:mechanism_hybrid, hybrid-encryption:implementation_requirement]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Alice wants to send Bob a 10 MB file using hybrid encryption with Bob's RSA public key.
+      Trace every value computed and transmitted, in order, from Alice starting with the file to
+      Bob recovering it - which key encrypts what, what gets sent over the wire, and what Bob does
+      with each piece he receives, in what order.
+
+  - id: T22-justify-hybrid-choice
+    capability: JUSTIFY
+    claim: Justify why neither pure symmetric nor pure asymmetric encryption resolves the
+      first-contact problem on its own, and why hybrid encryption isn't just "using both for
+      extra safety."
+    chain_node_refs: [hybrid-encryption:failure_symmetric, hybrid-encryption:failure_cost,
+      hybrid-encryption:mechanism_hybrid]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      A colleague suggests "just encrypt everything with RSA directly, it's more secure than AES
+      anyway." Explain specifically why this fails in practice (not "it's insecure" - it isn't),
+      and why hybrid encryption isn't simply RSA-encrypting the message twice for extra safety.
+
+  - id: T23-attack-cbc-iv-prediction
+    capability: ATTACK
+    claim: Given a system using CBC mode with a predictable IV, distinguish which of two chosen
+      plaintexts was encrypted.
+    chain_node_refs: [cbc-predictable-iv:requirement, cbc-predictable-iv:attack]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A web app encrypts session data with CBC using an IV that increments by 1 each request. You
+      can submit two candidate plaintext blocks and later observe the ciphertext for a request
+      whose outcome you don't control. Show how you'd determine which of your two candidates was
+      actually the one encrypted.
+
+  - id: T24-implement-constant-time-compare
+    capability: IMPLEMENT
+    claim: Implement a constant-time byte-comparison function suitable for MAC/tag verification,
+      and identify what specifically makes the naive version unsafe.
+    chain_node_refs: [timing-side-channel:implementation_requirement, timing-side-channel:failure]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      Given `compare(a: bytes, b: bytes) -> bool` implemented as a naive early-exit loop, identify
+      why it's unsafe for tag verification and rewrite it to take the same amount of time
+      regardless of where (or whether) the inputs first differ.
+
+  - id: T25-attack-timing-oracle
+    capability: ATTACK
+    claim: Given a verification endpoint whose response time measurably depends on how many
+      leading tag bytes matched, forge a valid tag byte by byte without the key.
+    chain_node_refs: [timing-side-channel:failure, timing-side-channel:attack]
+    fact_refs: []
+    importance: optional
+    prompt_sketch: >
+      You have network access to a service that verifies a tag using an early-exit byte
+      comparison, and you can measure response timing precisely enough to distinguish a
+      one-byte-matched response from a two-byte-matched one. Describe (or implement, in a
+      simulated timing environment) the byte-by-byte forgery process.

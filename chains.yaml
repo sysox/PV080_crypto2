@@ -1,14 +1,18 @@
 # chains.yaml — chain-instance records (stage-tagged nodes citing facts)
 #
-# STATUS: 10 chains validated, all `status: candidate` markers cleared. The original 4
-# (nonce-reuse, ecb-pattern-leakage, composition-integrity, rsa-determinism) went through two
-# review rounds; the 6 added later (replay-freshness, random-nonce-collision, public-key-binding,
-# stream-pseudorandomness, block-cipher-iteration, otp-tradeoff) also went through two rounds
-# before promotion (5 citation/content issues found and fixed across both rounds - see git log).
-# Two chains (replay-freshness, public-key-binding) are honestly thinner than the rest: both lean
-# on one fact (F52, F13 respectively) across most of their nodes because the fact base doesn't yet
-# have deeper content there (freshness mechanisms, certificates/PKI are explicitly future-file
-# territory) - kept as-is with that limitation noted inline rather than padded out artificially.
+# STATUS: 13 chains. First 10 fully validated (two review rounds each - see git log for the
+# issues found and fixed). 3 more added in one pass (hybrid-encryption, cbc-predictable-iv,
+# timing-side-channel) plus enrichments to 4 existing chains (block-cipher-iteration,
+# ecb-pattern-leakage, composition-integrity, otp-tradeoff), targeting facts that were core-
+# importance but cited by zero chains - fact coverage went from 39/75 to 62/75. Not yet through a
+# second external review round; treat the newest 3 chains as one step behind the other 10 until
+# that happens. Two chains (replay-freshness, public-key-binding) are honestly thinner than the
+# rest: both lean on one fact (F52, F13 respectively) across most of their nodes because the fact
+# base doesn't yet have deeper content there (freshness mechanisms, certificates/PKI are
+# explicitly future-file territory) - kept as-is with that limitation noted inline rather than
+# padded out artificially. cbc-predictable-iv's threat_ref is a similarly honest imperfect fit:
+# the attack needs a chosen-plaintext-style capability neither T1 nor T2 cleanly describes -
+# flagged inline rather than forcing a fit or inventing a third threat profile prematurely.
 # Decision background: fact-granularity-dilemma.md (three-layer model: facts -> chain-instance
 # nodes -> takeaways; stage lives on the node, not the fact).
 #
@@ -124,9 +128,11 @@ chains:
 
       - id: requirement
         stage: requirement
-        claim: Repeated or related plaintext blocks must not produce identical or trivially related
+        claim: Because a block cipher only defines a mapping for one block (F15), using it on a
+          longer message requires deciding how to handle multiple blocks - and specifically,
+          repeated or related plaintext blocks must not produce identical or trivially related
           ciphertext blocks.
-        fact_refs: [F35]
+        fact_refs: [F15, F35]
         leads_to: [mechanism]
 
       - id: mechanism
@@ -192,17 +198,19 @@ chains:
       - id: impl_requirement
         stage: implementation_requirement
         claim: When composing by hand, the encryption key and MAC key must be independently
-          derived, and one of three orderings must be chosen - Encrypt-then-MAC, MAC-then-encrypt,
-          or Encrypt-and-MAC. The three are not equally safe.
-        fact_refs: [F46, F48]
+          derived - typically via a KDF, deriving both from one shared secret with different
+          context/info strings rather than distributing two unrelated keys - and one of three
+          orderings must be chosen - Encrypt-then-MAC, MAC-then-encrypt, or Encrypt-and-MAC. The
+          three are not equally safe.
+        fact_refs: [F46, F48, F68]
         leads_to: [failure_padding_oracle, failure_tag_leak, safe_etm]
 
       - id: failure_padding_oracle
         stage: failure
-        claim: "MAC-then-encrypt must decrypt - and therefore validate padding - before the MAC can
-          even be checked, so a distinguishable 'bad padding' vs. 'bad MAC' response becomes an
-          observable oracle."
-        fact_refs: [F49]
+        claim: "MAC-then-encrypt must decrypt - and therefore validate the Padding a partial final
+          block required in the first place (F16) - before the MAC can even be checked, so a
+          distinguishable 'bad padding' vs. 'bad MAC' response becomes an observable oracle."
+        fact_refs: [F16, F49]
         leads_to: [attack_padding_oracle]
 
       - id: attack_padding_oracle
@@ -472,9 +480,9 @@ chains:
     nodes:
       - id: goal
         stage: security_goal
-        claim: A compactly keyed block cipher should hide exploitable structure from an observer who
-          lacks the key.
-        fact_refs: [F17, F18]
+        claim: A block cipher (a keyed permutation on fixed-size blocks, F14) that's compactly
+          keyed should still hide exploitable structure from an observer who lacks the key.
+        fact_refs: [F14, F17, F18]
         leads_to: [requirement]
 
       - id: requirement
@@ -486,8 +494,9 @@ chains:
 
       - id: mechanism
         stage: mechanism
-        claim: Iterate keyed round functions under a key schedule across many rounds.
-        fact_refs: [F19]
+        claim: "Iterate keyed round functions under a key schedule across many rounds (concretely:
+          AES, F58, uses 10/12/14 such rounds depending on key size)."
+        fact_refs: [F19, F58]
         leads_to: [failure]
 
       - id: failure
@@ -527,7 +536,7 @@ chains:
         claim: Use a one-time pad rather than expanding a short key into a computationally secure
           keystream.
         fact_refs: [F28, F34]
-        leads_to: [implementation_requirement]
+        leads_to: [implementation_requirement, residual_limitations]
 
       - id: implementation_requirement
         stage: implementation_requirement
@@ -547,4 +556,167 @@ chains:
         claim: The attacker obtains the XOR of the plaintexts and may recover both when their
           structure is sufficiently constrained.
         fact_refs: [F26, F27]
+        leads_to: []
+
+      - id: residual_limitations
+        stage: failure
+        claim: Even used perfectly (never reused), OTP's guarantee has real limits, not misuse
+          bugs - perfect secrecy covers plaintext content at a fixed, known length, so ciphertext
+          length still reveals message length (F30); and OTP is unauthenticated and malleable like
+          any unauthenticated XOR-based construction, so flipping a ciphertext bit predictably
+          flips the decrypted plaintext bit even without ever recovering the key - the general
+          Malleability property behind F31's specific case (F42).
+        fact_refs: [F30, F31, F42]
+        leads_to: []
+
+  - id: hybrid-encryption
+    title: Resolving the bootstrap problem without paying full asymmetric cost on every byte
+    usecase_ref: U1   # first contact, no pre-shared key - this chain's whole premise
+    threat_ref: T1    # passive eavesdropper; no active adversary needed for the base rationale
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide confidentiality without requiring a pre-shared secret.
+        fact_refs: [F2]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: Symmetric encryption alone is circular here - sharing a key securely already
+          requires a secure channel, which is exactly what's missing in a first-contact scenario.
+        fact_refs: [F7]
+        leads_to: [mechanism_symmetric, mechanism_asymmetric, mechanism_hybrid]
+
+      - id: mechanism_symmetric
+        stage: mechanism
+        claim: "Attempt: use symmetric encryption alone."
+        fact_refs: [F6]
+        leads_to: [failure_symmetric]
+
+      - id: failure_symmetric
+        stage: failure
+        claim: Symmetric encryption alone cannot resolve first contact at all - it requires
+          exactly the shared key that's missing, restating the requirement's circularity rather
+          than escaping it. Not a security break - a non-starter.
+        fact_refs: [F7]
+        leads_to: []
+
+      - id: mechanism_asymmetric
+        stage: mechanism
+        claim: "Attempt: use public-key encryption for everything, not just a session key."
+        fact_refs: [F8, F9]
+        leads_to: [failure_cost]
+
+      - id: failure_cost
+        stage: failure
+        claim: "Public-key operations are computationally far more expensive than symmetric ones
+          and typically bounded in message size, measurably so - orders-of-magnitude lower
+          throughput and disproportionate ciphertext expansion for anything beyond a short
+          message, plus far larger keys for equivalent security (both driven by the same
+          underlying need as symmetric keys - enough of a keyspace to resist brute-force, F5 - just
+          met through much larger numbers in the asymmetric case). Not a security break either -
+          impractical, not insecure."
+        fact_refs: [F5, F11, F71, F72, F73]
+        leads_to: []
+
+      - id: mechanism_hybrid
+        stage: mechanism
+        claim: "Use public-key encryption once, to transport a symmetric session key (e.g. via
+          RSA-OAEP or ElGamal, F60), then symmetric encryption (e.g. AES or ChaCha20, F61) for the
+          actual data, with Dec always recovering exactly what Enc produced (F1) - combining
+          public-key's no-pre-shared-secret benefit with symmetric's speed. The accepted
+          resolution, not a failure branch."
+        fact_refs: [F1, F12, F60, F61]
+        leads_to: [implementation_requirement]
+
+      - id: implementation_requirement
+        stage: implementation_requirement
+        claim: The public key used to transport the session key must itself be authentically
+          bound to its owner, or an active adversary can substitute it - already covered in full
+          by the public-key-binding chain; cited here as a real dependency, not re-derived.
+        fact_refs: [F13]
+        leads_to: []
+
+  - id: cbc-predictable-iv
+    title: A predictable CBC IV lets an adversary distinguish chosen plaintexts
+    usecase_ref: U2   # repeated communication under a shared key
+    threat_ref: T1    # closest fit; see attack node's caveat - this actually needs a
+                       # chosen-plaintext-style capability the T1/T2 catalog doesn't cleanly cover
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide confidentiality.
+        fact_refs: [F2]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: Unlike a nonce, which only needs uniqueness, CBC's IV must additionally be
+          unpredictable to an adversary.
+        fact_refs: [F36]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: Using a predictable IV in CBC violates this - the mode's own requirement, not a
+          weakness of the underlying block cipher.
+        fact_refs: [F37]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: "An adversary who can obtain the encryption of chosen plaintexts and observe the
+          resulting ciphertexts can distinguish which of two candidate plaintexts produced a given
+          ciphertext block, exploiting the predictable IV alone. (This needs a
+          chosen-plaintext-style capability beyond pure passive observation - a threat this file's
+          two-profile catalog, T1/T2, doesn't cleanly capture; flagged as a catalog gap, not
+          modeled precisely by either threat_ref.)"
+        fact_refs: [F37]
+        leads_to: []
+
+  - id: timing-side-channel
+    title: A functionally-correct MAC comparison can still leak the tag through timing
+    usecase_ref: U2   # repeated communication under a shared key, ongoing verification
+    threat_ref: T2    # exploiting the oracle needs many active, crafted verification attempts
+
+    nodes:
+      - id: goal
+        stage: security_goal
+        claim: The scheme must provide integrity - and specifically, tag verification must not
+          leak information about the correct tag through anything observable.
+        fact_refs: [F41]
+        leads_to: [requirement]
+
+      - id: requirement
+        stage: requirement
+        claim: A verifier's observable behavior may depend on whether authentication succeeded or
+          failed overall, but not on why - not on any internal step evaluated before the
+          authentication decision is final.
+        fact_refs: [F49]
+        leads_to: [implementation_requirement]
+
+      - id: implementation_requirement
+        stage: implementation_requirement
+        claim: Verifying a MAC/tag must use a constant-time comparison, not an early-exit
+          byte-by-byte one.
+        fact_refs: [F69]
+        leads_to: [failure]
+
+      - id: failure
+        stage: failure
+        claim: An early-exit comparison leaks how many leading bytes matched via timing, even
+          though the function is otherwise completely correct - functional correctness and
+          side-channel safety are different properties.
+        fact_refs: [F69]
+        leads_to: [attack]
+
+      - id: attack
+        stage: attack
+        claim: Given an actually exposed, measurable timing channel and enough attempts, an
+          adversary can forge a valid tag one byte at a time, without knowing the key - though
+          this requires a genuine observable timing oracle and favorable conditions, not just
+          non-constant-time code in the abstract.
+        fact_refs: [F69]
         leads_to: []
