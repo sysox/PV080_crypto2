@@ -36,7 +36,7 @@ takeaways:
     capability: PREDICT
     claim: Given two ciphertexts known to be produced under a reused keystream, predict what
       XORing them together reveals, without performing any recovery attempt.
-    chain_node_refs: [nonce-reuse:attack]
+    chain_node_refs: [nonce-reuse:mechanism, nonce-reuse:attack]
     fact_refs: []
     importance: core
     prompt_sketch: >
@@ -251,8 +251,8 @@ takeaways:
     capability: EXPLAIN
     claim: Explain how iterated keyed rounds reconcile a compact key with a permutation that hides
       exploitable structure.
-    chain_node_refs: [block-cipher-iteration:requirement, block-cipher-iteration:mechanism,
-      block-cipher-iteration:failure]
+    chain_node_refs: [block-cipher-iteration:goal, block-cipher-iteration:requirement,
+      block-cipher-iteration:mechanism, block-cipher-iteration:failure]
     fact_refs: []
     importance: recommended
     prompt_sketch: >
@@ -291,7 +291,8 @@ takeaways:
     claim: Justify why neither pure symmetric nor pure asymmetric encryption resolves the
       first-contact problem on its own, and why hybrid encryption isn't just "using both for
       extra safety."
-    chain_node_refs: [hybrid-encryption:failure_symmetric, hybrid-encryption:failure_cost,
+    chain_node_refs: [hybrid-encryption:mechanism_symmetric, hybrid-encryption:failure_symmetric,
+      hybrid-encryption:mechanism_asymmetric, hybrid-encryption:failure_cost,
       hybrid-encryption:mechanism_hybrid]
     fact_refs: []
     importance: core
@@ -337,3 +338,41 @@ takeaways:
       comparison, and you can measure response timing precisely enough to distinguish a
       one-byte-matched response from a two-byte-matched one. Describe (or implement, in a
       simulated timing environment) the byte-by-byte forgery process.
+
+  - id: T26-distinguish-otp-limits
+    capability: DISTINGUISH
+    claim: Distinguish what OTP's perfect secrecy does and doesn't cover - plaintext content is
+      protected, but message length and malleability are not, even when the pad is used perfectly.
+    chain_node_refs: [otp-tradeoff:residual_limitations]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A colleague claims "a correctly-used one-time pad gives complete secrecy - the ciphertext
+      reveals nothing at all about the plaintext." Identify two things it still reveals or
+      permits, even when the key is truly random, as long as the message, and never reused.
+
+  - id: T27-predict-counter-wraparound
+    capability: PREDICT
+    claim: Given a counter-based nonce with a known bit-width and a message volume that exceeds
+      it, predict what happens to confidentiality.
+    chain_node_refs: [nonce-reuse:impl_requirement, nonce-reuse:failure_wraparound]
+    fact_refs: []
+    importance: recommended
+    prompt_sketch: >
+      A system uses a 32-bit counter as its nonce, encrypting under one key with no key rotation
+      and no wraparound check. After exactly 2^32 messages, predict what happens to message
+      number 2^32 + 1, concretely - what does it collide with, and what does an observer learn.
+
+  - id: T28-choose-aead-or-manual
+    capability: CHOOSE
+    claim: Choose between a dedicated AEAD construction and hand-composed generic composition when
+      designing a new protocol, and justify why integrity needs a mechanism beyond confidentiality
+      at all.
+    chain_node_refs: [composition-integrity:goal, composition-integrity:requirement,
+      composition-integrity:mechanism_aead, composition-integrity:mechanism_manual]
+    fact_refs: []
+    importance: core
+    prompt_sketch: >
+      You're designing a new protocol from scratch and need both confidentiality and integrity.
+      Your team debates AES-GCM (AEAD) vs. hand-assembling AES-CTR plus HMAC. Which do you choose
+      by default, and under what circumstances, if any, would you choose the other?
